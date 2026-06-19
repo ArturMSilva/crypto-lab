@@ -1,0 +1,51 @@
+version: "3.9"
+
+networks:
+  canal_inseguro:
+    driver: bridge
+
+services:
+
+  broker:
+    build:
+      context: .
+      dockerfile: broker/Dockerfile
+    container_name: broker
+    ports:
+      - "5000:5000"
+    networks:
+      - canal_inseguro
+
+  alice:
+    build:
+      context: .
+      dockerfile: alice/Dockerfile
+    container_name: alice
+    depends_on:
+      - broker
+    ports:
+      - "8001:8001"
+    networks:
+      - canal_inseguro
+
+  bob:
+    build:
+      context: .
+      dockerfile: bob/Dockerfile
+    container_name: bob
+    depends_on:
+      - broker
+    ports:
+      - "8002:8002"
+    networks:
+      - canal_inseguro
+
+  attacker:
+    build:
+      context: .
+      dockerfile: attacker/Dockerfile
+    container_name: attacker
+    depends_on:
+      - broker
+    networks:
+      - canal_inseguro
