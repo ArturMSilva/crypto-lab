@@ -18,8 +18,16 @@ SECRET_KEY = "SECRETO"          # Chave compartilhada com Bob (o atacante não s
 BROKER_URL = "http://broker:5000"  # Broker central (simulando canal inseguro)
 ALICE_PORT = 8001
 
-# Mensagem que Alice quer enviar a Bob
-MESSAGE = "OLA BOB COMO VOCE ESTA HOJE"
+# Mensagem que Alice quer enviar a Bob.
+# Texto longo (e sem acentos) de proposito: quanto mais texto cifrado, mais
+# facil para o atacante recuperar a chave por analise de frequencia.
+MESSAGE = (
+    "OLA BOB ESTA E UMA MENSAGEM SECRETA ENVIADA POR ALICE ATRAVES DO CANAL "
+    "INSEGURO ESPERO QUE NINGUEM CONSIGA LER NOSSA CONVERSA POIS ESTAMOS USANDO "
+    "A CIFRA DE VIGENERE COM UMA CHAVE COMPARTILHADA APENAS ENTRE NOS DOIS SE "
+    "VOCE CONSEGUIR DECIFRAR ESTA MENSAGEM CORRETAMENTE RESPONDA COM SIM PARA "
+    "CONFIRMAR QUE A NOSSA COMUNICACAO SEGURA ESTA FUNCIONANDO PERFEITAMENTE BEM"
+)
 
 
 class AliceHandler(BaseHTTPRequestHandler):

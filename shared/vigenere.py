@@ -54,44 +54,81 @@ def index_of_coincidence(text: str) -> float:
     return ic
 
 
+# Frequência relativa das letras no idioma português (em %), sem acentos.
+# Usada como "impressão digital" do idioma no ataque de frequência.
+PT_FREQ = {
+    'A': 14.63, 'B': 1.04, 'C': 3.88, 'D': 4.99, 'E': 12.57, 'F': 1.02,
+    'G': 1.30, 'H': 1.28, 'I': 6.18, 'J': 0.40, 'K': 0.02, 'L': 2.78,
+    'M': 4.74, 'N': 5.05, 'O': 10.73, 'P': 2.52, 'Q': 1.20, 'R': 6.53,
+    'S': 7.81, 'T': 4.34, 'U': 4.63, 'V': 1.67, 'W': 0.01, 'X': 0.21,
+    'Y': 0.01, 'Z': 0.47,
+}
+
+# IC esperado para texto monoalfabético em português (~0.072-0.078).
+PT_IC = 0.072
+
+
 def kasiski_key_length(ciphertext: str, max_key_len: int = 10) -> int:
     """
-    Estima o tamanho da chave usando análise de IC (simplificado).
-    Testa tamanhos de 1 a max_key_len e escolhe o que produz IC mais próximo do inglês (~0.065).
+    Estima o tamanho da chave usando o Índice de Coincidência.
+
+    Para cada tamanho candidato, o texto é dividido em grupos (um por posição
+    da chave). Se o tamanho estiver correto, cada grupo é uma cifra de César de
+    texto em português e seu IC fica próximo de PT_IC (~0.072). Tamanhos errados
+    embaralham as letras e produzem IC baixo (~0.038, texto aleatório).
+
+    Escolhemos o MENOR tamanho cujo IC médio já indica idioma natural, evitando
+    selecionar um múltiplo do tamanho real (que também teria IC alto).
     """
     text = ''.join(c for c in ciphertext.upper() if c.isalpha())
-    TARGET_IC = 0.065
-    best_len = 1
-    best_diff = float('inf')
+    THRESHOLD = 0.060  # acima disso, consideramos "linguagem natural"
 
+    best_len, best_ic = 1, -1.0
     for key_len in range(1, max_key_len + 1):
-        # Divide o texto em 'key_len' grupos de acordo com a posição da chave
         groups = [text[i::key_len] for i in range(key_len)]
         avg_ic = sum(index_of_coincidence(g) for g in groups) / key_len
-        diff = abs(avg_ic - TARGET_IC)
-        if diff < best_diff:
-            best_diff = diff
-            best_len = key_len
+        if avg_ic >= THRESHOLD:
+            return key_len  # menor tamanho que já parece idioma natural
+        if avg_ic > best_ic:
+            best_ic, best_len = avg_ic, key_len
 
-    return best_len
+    return best_len  # nenhum cruzou o limiar; devolve o de maior IC
 
 
 def frequency_attack_single(ciphertext_group: str) -> str:
     """
-    Ataque de frequência em um único grupo (substitui cifra de César).
-    Assume que o caractere mais frequente corresponde à letra 'E' em português.
+    Quebra uma cifra de César (um grupo da Vigenère) por análise de frequência.
+
+    Testa os 26 deslocamentos possíveis. Para cada um, decifra o grupo e mede,
+    via qui-quadrado, o quanto a distribuição de letras resultante se parece com
+    a do português (PT_FREQ). O deslocamento com menor qui-quadrado revela a
+    letra da chave naquela posição.
     """
-    freq = {}
-    for c in ciphertext_group.upper():
-        if c.isalpha():
-            freq[c] = freq.get(c, 0) + 1
-    if not freq:
+    group = [c for c in ciphertext_group.upper() if c.isalpha()]
+    n = len(group)
+    if n == 0:
         return 'A'
-    most_common = max(freq, key=freq.get)
-    # Em português, a letra mais comum é 'A', mas usaremos 'E' como padrão inglês
-    # Tentamos ambas e escolhemos a que faz mais sentido
-    shift = (ord(most_common) - ord('E')) % 26
-    return chr(shift + ord('A'))
+
+    best_shift, best_chi = 0, float('inf')
+    for shift in range(26):
+        # Conta as letras do grupo decifrado com este deslocamento
+        counts = {}
+        for c in group:
+            d = chr((ord(c) - ord('A') - shift + 26) % 26 + ord('A'))
+            counts[d] = counts.get(d, 0) + 1
+
+        # Qui-quadrado contra a frequência esperada do português
+        chi = 0.0
+        for letter, pct in PT_FREQ.items():
+            expected = pct / 100.0 * n
+            observed = counts.get(letter, 0)
+            chi += (observed - expected) ** 2 / expected
+
+        if chi < best_chi:
+            best_chi, best_shift = chi, shift
+
+    # A letra da chave é o próprio deslocamento (A=0, B=1, ...)
+    return chr(best_shift + ord('A'))
 
 
 def crack_vigenere(ciphertext: str, max_key_len: int = 10) -> tuple:
