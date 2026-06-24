@@ -191,6 +191,25 @@ label { font-size: .85rem; color: var(--muted); display: block; margin-top: .4re
 .position-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .3rem; font-size: .85rem; }
 .position-head .key-letter { font-size: 1.4rem; font-weight: 800; }
 
+/* ---- Auto mode attempts ---- */
+.attempts { list-style: none; padding: 0; margin: .8rem 0 0; display: flex; flex-direction: column; gap: 5px; }
+.attempt {
+  display: grid;
+  grid-template-columns: 24px 150px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: .85rem;
+}
+.attempt.sim { background: rgba(81, 207, 102, .15); }
+.attempt.nao { opacity: .6; }
+.attempt.pending { outline: 1px solid var(--attacker); }
+.attempt-key strong { color: var(--attacker); letter-spacing: 1px; }
+.attempt-text { color: var(--muted); font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.success-box { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--border); }
+
 /* ---- Log sidebar ---- */
 .log-panel { position: sticky; top: 80px; }
 .log { list-style: none; padding: 0; margin: .5rem 0 0; max-height: 70vh; overflow-y: auto; }

@@ -92,8 +92,21 @@ Abra três abas em `http://localhost:5173`, deixe o broker como
    - exibe a **chave descoberta** e o **texto decifrado** — sem nunca ter
      recebido a chave.
 3. **Bob** recebe a cifra, decifra com `SECRETO` e responde **SIM**.
-4. (Opcional, MitM ativo) O atacante injeta um texto manipulado no canal e a
-   turma observa Bob reagir à mensagem adulterada.
+
+### 🤖 Modo automático (atacante "fica testando até acertar")
+
+Na tela do atacante há o botão **▶ Iniciar ataque automático**. Com ele:
+
+- O atacante injeta no canal um palpite por **tamanho de chave (1 → 10)**, em
+  sequência, sem intervenção do operador.
+- O **Bob** só precisa clicar **SIM** ou **NÃO**: ele vê o texto que o atacante
+  alega ter decifrado e julga se faz sentido.
+- A cada **NÃO**, o atacante avança sozinho para o próximo candidato; ao receber
+  **SIM**, ele para e anuncia a **chave secreta descoberta**.
+
+Com a mensagem/chave padrão, os tamanhos 1–6 produzem texto sem sentido (Bob
+clica NÃO) e o tamanho **7** revela a chave `SECRETO` (Bob clica SIM). A lista
+de tentativas mostra cada palpite com ✅/❌.
 
 O painel lateral **"Canal inseguro (log)"** mostra, em todas as telas, tudo o
 que trafega — reforçando que o canal não tem confidencialidade.

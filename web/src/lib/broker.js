@@ -43,5 +43,6 @@ export const broker = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ciphertext, note, attempt }),
     }),
+  clearReply: () => req("/reply", { method: "DELETE" }),
   reset: () => req("/reset", { method: "POST" }),
 };

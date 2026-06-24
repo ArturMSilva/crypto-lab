@@ -8,7 +8,12 @@ export default function Bob({ state }) {
 
   const channel = state?.channel;
   const ciphertext = channel?.ciphertext || "";
-  const decrypted = ciphertext ? vigenereDecrypt(ciphertext, key) : "";
+  const injected = !!channel?.injected;
+
+  // Mensagem normal de Alice: Bob decifra com a chave.
+  // Mensagem injetada pelo atacante: já vem "em claro" (palpite do atacante),
+  // então Bob apenas julga se o texto faz sentido.
+  const shownText = injected ? ciphertext : ciphertext ? vigenereDecrypt(ciphertext, key) : "";
 
   async function reply(text) {
     try {
@@ -24,34 +29,44 @@ export default function Bob({ state }) {
       <div className="panel">
         <h2>📨 Mensagem recebida do canal</h2>
         {ciphertext ? (
-          <>
-            <p className="mono cipher-block">{ciphertext}</p>
-            {channel?.injected && (
-              <p className="warn">⚡ Esta mensagem foi injetada pelo atacante! {channel.note}</p>
-            )}
-          </>
+          injected ? (
+            <p className="warn">
+              ⚡ Mensagem injetada pelo atacante. {channel.note}
+            </p>
+          ) : (
+            <>
+              <label>Texto cifrado</label>
+              <p className="mono cipher-block">{ciphertext}</p>
+            </>
+          )
         ) : (
           <p className="hint">Nenhuma mensagem no canal ainda…</p>
         )}
       </div>
 
       <div className="panel">
-        <h2>🔓 Decifrar com a chave</h2>
-        <label>Chave secreta (compartilhada com Alice)</label>
-        <input value={key} onChange={(e) => setKey(e.target.value)} />
-        <label>Texto decifrado</label>
-        <p className="mono plain-block">{decrypted || "—"}</p>
+        <h2>{injected ? "👀 Texto recebido" : "🔓 Decifrar com a chave"}</h2>
+        {!injected && (
+          <>
+            <label>Chave secreta (compartilhada com Alice)</label>
+            <input value={key} onChange={(e) => setKey(e.target.value)} />
+          </>
+        )}
+        <label>{injected ? "É isto que o atacante afirma ser a mensagem:" : "Texto decifrado"}</label>
+        <p className="mono plain-block">{shownText || "—"}</p>
       </div>
 
       <div className="panel">
-        <h2>↩️ Responder a Alice</h2>
-        <p className="hint">A mensagem faz sentido? Responda pelo canal.</p>
+        <h2>↩️ Responder pelo canal</h2>
+        <p className="hint">
+          O texto acima faz sentido / é a mensagem esperada? Clique em SIM ou NÃO.
+        </p>
         <div className="row">
           <button className="primary-btn ok" disabled={!ciphertext} onClick={() => reply("SIM")}>
-            ✅ SIM, entendi
+            ✅ SIM
           </button>
           <button className="primary-btn bad" disabled={!ciphertext} onClick={() => reply("NAO ENTENDI")}>
-            ❌ NÃO entendi
+            ❌ NÃO
           </button>
         </div>
         {status && <p className="status">{status}</p>}

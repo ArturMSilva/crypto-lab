@@ -127,12 +127,9 @@ export function frequencyAttackSingle(group) {
   return { keyChar: String.fromCharCode(bestShift + A), bestShift, chiByShift };
 }
 
-// Ataque completo com todos os dados intermediários para a interface.
-export function crackVigenere(ciphertext, maxKeyLen = 10) {
-  const icSpectrum = icByKeyLength(ciphertext, maxKeyLen);
-  const keyLen = kasiskiKeyLength(ciphertext, maxKeyLen);
+// Deriva a melhor chave para um tamanho FIXO, via análise de frequência por grupo.
+export function attackWithKeyLength(ciphertext, keyLen) {
   const text = onlyAlpha(ciphertext);
-
   const positions = [];
   let key = "";
   for (let i = 0; i < keyLen; i++) {
@@ -142,7 +139,22 @@ export function crackVigenere(ciphertext, maxKeyLen = 10) {
     positions.push({ index: i, group, ...res });
     key += res.keyChar;
   }
+  return { keyLen, positions, key, decrypted: vigenereDecrypt(ciphertext, key) };
+}
 
-  const decrypted = vigenereDecrypt(ciphertext, key);
-  return { icSpectrum, keyLen, positions, key, decrypted };
+// Ataque completo: estima o tamanho da chave e quebra cada posição.
+export function crackVigenere(ciphertext, maxKeyLen = 10) {
+  const icSpectrum = icByKeyLength(ciphertext, maxKeyLen);
+  const keyLen = kasiskiKeyLength(ciphertext, maxKeyLen);
+  return { icSpectrum, ...attackWithKeyLength(ciphertext, keyLen) };
+}
+
+// Lista de candidatos (um por tamanho de chave 1..maxKeyLen), em ordem crescente.
+// Usada pelo modo automático: o atacante tenta cada um até o Bob confirmar.
+export function candidatesByLength(ciphertext, maxKeyLen = 10) {
+  const candidates = [];
+  for (let L = 1; L <= maxKeyLen; L++) {
+    candidates.push(attackWithKeyLength(ciphertext, L));
+  }
+  return candidates;
 }
