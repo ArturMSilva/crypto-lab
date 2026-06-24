@@ -104,9 +104,25 @@ Na tela do atacante há o botão **▶ Iniciar ataque automático**. Com ele:
 - A cada **NÃO**, o atacante avança sozinho para o próximo candidato; ao receber
   **SIM**, ele para e anuncia a **chave secreta descoberta**.
 
-Com a mensagem/chave padrão, os tamanhos 1–6 produzem texto sem sentido (Bob
-clica NÃO) e o tamanho **7** revela a chave `SECRETO` (Bob clica SIM). A lista
-de tentativas mostra cada palpite com ✅/❌.
+A lista de tentativas mostra cada palpite com ✅/❌ e, quando o refinamento
+corrige a chave, exibe `palpite → chave refinada`.
+
+#### Refinamento (por que ele acerta a chave exata)
+
+A análise de frequência pura (qui-quadrado por coluna) costuma **chegar perto**,
+mas erra algumas letras em textos não muito longos — e aí o atacante testaria
+tamanhos 8, 9, 10 sem nunca confirmar. Para corrigir isso, cada candidato passa
+por **hill-climbing**: partindo do palpite por frequência, o atacante ajusta
+letra a letra a chave, mantendo as trocas que aumentam o quanto o texto decifrado
+**parece português** (modelo de trigramas de um corpus de referência). Os
+candidatos são então ordenados pela melhor pontuação, então o tamanho/chave
+corretos costumam ser a **primeira** tentativa.
+
+> ⚠️ **Tamanho da mensagem importa.** A criptanálise é estatística: com a
+> mensagem padrão (longa) o atacante recupera a chave exata. Mensagens muito
+> curtas (uma frase) **não fornecem dados suficientes** e o ataque falha mesmo
+> com refinamento — o que, por si só, é uma lição: pouco texto cifrado dificulta
+> a análise de frequência.
 
 O painel lateral **"Canal inseguro (log)"** mostra, em todas as telas, tudo o
 que trafega — reforçando que o canal não tem confidencialidade.

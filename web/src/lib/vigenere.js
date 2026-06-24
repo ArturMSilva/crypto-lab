@@ -150,11 +150,118 @@ export function crackVigenere(ciphertext, maxKeyLen = 10) {
 }
 
 // Lista de candidatos (um por tamanho de chave 1..maxKeyLen), em ordem crescente.
-// Usada pelo modo automático: o atacante tenta cada um até o Bob confirmar.
 export function candidatesByLength(ciphertext, maxKeyLen = 10) {
   const candidates = [];
   for (let L = 1; L <= maxKeyLen; L++) {
     candidates.push(attackWithKeyLength(ciphertext, L));
   }
   return candidates;
+}
+
+/* ------------------------------------------------------------------ *
+ * REFINAMENTO — corrige o "chega perto mas erra" do ataque puro de
+ * frequência. A análise por qui-quadrado dá um palpite; o hill-climbing
+ * ajusta cada letra da chave maximizando o quanto o texto decifrado
+ * "parece português" (modelo de trigramas de um corpus de referência).
+ * ------------------------------------------------------------------ */
+
+// Corpus de referência em português (sem acentos). Quanto mais texto natural,
+// melhor o modelo estatístico que distingue uma decifração correta de lixo.
+const PT_CORPUS = `
+A criptografia e a ciencia de proteger a informacao transformando mensagens
+em codigos que apenas as partes autorizadas conseguem ler. Desde a antiguidade
+as pessoas usam cifras para esconder segredos militares politicos e comerciais.
+A cifra de cesar substitui cada letra por outra deslocada um numero fixo de
+posicoes no alfabeto e por isso e facil de quebrar com analise de frequencia.
+A cifra de vigenere usa uma palavra chave que se repete ao longo do texto e por
+muito tempo foi considerada indecifravel. No entanto a repeticao da chave cria
+padroes estatisticos que permitem estimar o tamanho da chave e depois recuperar
+cada letra. A seguranca de um sistema nao deve depender do segredo do algoritmo
+mas apenas do segredo da chave. Hoje usamos algoritmos modernos como o aes que
+resistem a esse tipo de ataque quando a chave e suficientemente longa e aleatoria.
+O canal de comunicacao tambem precisa ser autenticado e protegido para evitar
+que um atacante intercepte altere ou injete mensagens sem que ninguem perceba.
+A confidencialidade a integridade e a autenticidade sao pilares da seguranca da
+informacao. As pessoas trocam mensagens todos os dias e esperam que a conversa
+permaneca privada. Por isso o estudo das cifras e dos ataques e fundamental para
+quem deseja construir sistemas confiaveis e proteger os dados dos usuarios contra
+adversarios que tentam descobrir a chave secreta usada para cifrar o conteudo.
+`;
+
+let NGRAM = null;
+function buildNgram() {
+  const text = onlyAlpha(PT_CORPUS);
+  const tri = {};
+  for (let i = 0; i + 3 <= text.length; i++) {
+    const t = text.slice(i, i + 3);
+    tri[t] = (tri[t] || 0) + 1;
+  }
+  const total = Math.max(1, text.length - 2);
+  NGRAM = { tri, total, floor: Math.log(0.01 / total) };
+}
+
+// Pontua o quanto um texto "parece português" (soma de log-prob dos trigramas).
+// Maior = mais natural. Serve de função objetivo do refinamento.
+export function textFitness(text) {
+  if (!NGRAM) buildNgram();
+  const s = onlyAlpha(text);
+  let score = 0;
+  for (let i = 0; i + 3 <= s.length; i++) {
+    const c = NGRAM.tri[s.slice(i, i + 3)];
+    score += c != null ? Math.log(c / NGRAM.total) : NGRAM.floor;
+  }
+  return score;
+}
+
+// A partir de uma chave inicial, ajusta cada posição (A..Z) mantendo a troca
+// que mais aumenta a "naturalidade" do texto, repetindo até estabilizar.
+export function hillClimbKey(ciphertext, keyLen, startKey) {
+  const key = startKey.padEnd(keyLen, "A").slice(0, keyLen).split("");
+  let best = textFitness(vigenereDecrypt(ciphertext, key.join("")));
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let i = 0; i < keyLen; i++) {
+      let bestChar = key[i];
+      let bestScore = best;
+      const original = key[i];
+      for (let c = 0; c < 26; c++) {
+        key[i] = String.fromCharCode(65 + c);
+        const score = textFitness(vigenereDecrypt(ciphertext, key.join("")));
+        if (score > bestScore) {
+          bestScore = score;
+          bestChar = key[i];
+        }
+      }
+      key[i] = bestChar;
+      if (bestChar !== original) {
+        best = bestScore;
+        improved = true;
+      }
+    }
+  }
+  return key.join("");
+}
+
+// Ataque a um tamanho fixo, já com refinamento por hill-climbing.
+export function attackRefined(ciphertext, keyLen) {
+  const base = attackWithKeyLength(ciphertext, keyLen);
+  const key = hillClimbKey(ciphertext, keyLen, base.key);
+  const decrypted = vigenereDecrypt(ciphertext, key);
+  return { keyLen, baseKey: base.key, key, decrypted, fitness: textFitness(decrypted) };
+}
+
+// Penalidade por letra de chave: chaves longas têm mais graus de liberdade e
+// tendem a "overfitar" textos curtos. Penalizar o tamanho evita escolher uma
+// chave longa só porque ela ajusta melhor um texto pequeno.
+const LENGTH_PENALTY = 3.0;
+const rankScore = (c) => c.fitness - LENGTH_PENALTY * c.keyLen;
+
+// Candidatos refinados (um por tamanho), ordenados do mais provável ao menos.
+// Usado pelo modo automático: tenta primeiro o que mais "parece português".
+export function candidatesRanked(ciphertext, maxKeyLen = 10) {
+  const cands = [];
+  for (let L = 1; L <= maxKeyLen; L++) cands.push(attackRefined(ciphertext, L));
+  cands.sort((a, b) => rankScore(b) - rankScore(a));
+  return cands;
 }

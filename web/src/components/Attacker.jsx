@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { crackVigenere, candidatesByLength, PT_IC } from "../lib/vigenere.js";
+import { crackVigenere, candidatesRanked, PT_IC } from "../lib/vigenere.js";
 import { broker } from "../lib/broker.js";
 import BarChart from "./BarChart.jsx";
 
@@ -19,8 +19,9 @@ export default function Attacker({ state }) {
 
   // Análise "inteligente" (IC + qui-quadrado) usada nos gráficos.
   const smart = useMemo(() => (captured ? crackVigenere(captured, 10) : null), [captured]);
-  // Candidatos do modo automático: um por tamanho de chave (1..10).
-  const candidates = useMemo(() => (captured ? candidatesByLength(captured, 10) : []), [captured]);
+  // Candidatos do modo automático já REFINADOS por hill-climbing e ordenados
+  // do mais provável ao menos provável (tenta primeiro o melhor palpite).
+  const candidates = useMemo(() => (captured ? candidatesRanked(captured, 10) : []), [captured]);
 
   // ---- estado do modo automático -----------------------------------
   const [auto, setAuto] = useState(false);
@@ -48,7 +49,7 @@ export default function Attacker({ state }) {
     setIndex(i);
     setAttempts((prev) => [
       ...prev,
-      { keyLen: c.keyLen, key: c.key, decrypted: c.decrypted, result: "pending" },
+      { keyLen: c.keyLen, key: c.key, baseKey: c.baseKey, decrypted: c.decrypted, result: "pending" },
     ]);
     setPhase("waiting");
     try {
@@ -119,8 +120,9 @@ export default function Attacker({ state }) {
       <div className={`panel ${phase === "success" ? "highlight" : ""}`}>
         <h2>🤖 Modo automático</h2>
         <p className="hint">
-          O atacante injeta um palpite por tamanho de chave (1→10) e aguarda o Bob
-          validar. Avança sozinho a cada “NÃO” e para quando o Bob clica “SIM”.
+          O atacante refina cada palpite por <em>hill-climbing</em> (ajusta a chave
+          maximizando o quanto o texto “parece português”) e tenta primeiro o mais
+          provável. Avança sozinho a cada “NÃO” e para quando o Bob clica “SIM”.
         </p>
         <div className="row">
           {!auto && phase !== "success" && (
@@ -160,7 +162,11 @@ export default function Attacker({ state }) {
                   {a.result === "sim" ? "✅" : a.result === "nao" ? "❌" : "⏳"}
                 </span>
                 <span className="attempt-key">
-                  tam {a.keyLen} · chave <strong>{a.key}</strong>
+                  tam {a.keyLen} ·{" "}
+                  {a.baseKey && a.baseKey !== a.key && (
+                    <span className="attempt-base">{a.baseKey} →</span>
+                  )}{" "}
+                  <strong>{a.key}</strong>
                 </span>
                 <span className="attempt-text mono">{a.decrypted.slice(0, 48)}…</span>
               </li>
@@ -191,8 +197,11 @@ export default function Attacker({ state }) {
           formatValue={(v) => v.toFixed(4)}
         />
         <p className="result">
-          Tamanho mais provável pela análise: <strong>{smart.keyLen}</strong> → palpite{" "}
-          <strong>{smart.key}</strong>
+          Tamanho mais provável pela análise: <strong>{smart.keyLen}</strong> → palpite por
+          frequência <strong>{smart.key}</strong>
+          {candidates[0] && candidates[0].key !== smart.key && (
+            <> · refinado → <strong>{candidates[0].key}</strong></>
+          )}
         </p>
       </div>
 
