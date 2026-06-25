@@ -105,7 +105,10 @@ label { font-size: .85rem; color: var(--muted); display: block; margin-top: .4re
   color: var(--muted);
   border-radius: 8px;
   padding: .4rem .8rem;
+  cursor: pointer;
 }
+.ghost.danger { border-color: var(--bad); color: var(--bad); }
+.ghost.danger:hover { background: var(--bad); color: #fff; }
 .broker-status { display: flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--muted); }
 .broker-url { font-family: monospace; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }

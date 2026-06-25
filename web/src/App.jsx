@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { obterUrlBroker, definirUrlBroker } from "./lib/broker.js";
+import { obterUrlBroker, definirUrlBroker, broker } from "./lib/broker.js";
 import { useEstadoBroker } from "./hooks/useBrokerState.js";
 import Alice from "./components/Alice.jsx";
 import Bob from "./components/Bob.jsx";
@@ -24,6 +24,22 @@ export default function App() {
   function salvarBroker(url) {
     definirUrlBroker(url);
     setUrl(obterUrlBroker());
+  }
+
+  // Zera o canal compartilhado (mensagem, resposta e log) e recarrega a página
+  // para reiniciar também o estado local de cada papel — começa tudo do zero.
+  async function reiniciarTudo() {
+    const ok = window.confirm(
+      "Reiniciar tudo? Isso limpa o canal (mensagem, resposta e histórico) para TODOS os papéis e recomeça do zero."
+    );
+    if (!ok) return;
+    try {
+      await broker.reiniciar();
+    } catch {
+      // mesmo se o broker estiver offline, recarregamos para limpar o estado local
+    } finally {
+      window.location.reload();
+    }
   }
 
   if (!papel) {
@@ -52,6 +68,9 @@ export default function App() {
         </div>
         <div className="topbar-right">
           <StatusBroker online={online} url={urlBroker} erro={erro} />
+          <button className="ghost danger" onClick={reiniciarTudo} title="Limpa o canal e recomeça do zero">
+            🔄 Reiniciar tudo
+          </button>
           <button className="ghost" onClick={() => setPapel(null)}>
             Trocar papel
           </button>
