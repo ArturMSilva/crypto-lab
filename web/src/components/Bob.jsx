@@ -2,7 +2,7 @@ import { useState } from "react";
 import { decifrarVigenere } from "../lib/vigenere.js";
 import { broker } from "../lib/broker.js";
 
-export default function Bob({ estado }) {
+export default function Bob({ estado, realista }) {
   const [chave, setChave] = useState("SECRETO");
   const [status, setStatus] = useState(null);
 
@@ -22,6 +22,45 @@ export default function Bob({ estado }) {
     } catch (e) {
       setStatus("Erro: " + e.message);
     }
+  }
+
+  // Modo realista: Bob não é avisado de injeções. Recebe a mensagem e julga só
+  // pelo conteúdo, sem qualquer pista de que o atacante manipulou o canal.
+  if (realista) {
+    return (
+      <div className="screen">
+        <div className="panel">
+          <h2>📨 Mensagem recebida do canal</h2>
+          {textoCifrado ? (
+            <>
+              <label>Sua chave secreta (compartilhada com Alice)</label>
+              <input value={chave} onChange={(e) => setChave(e.target.value)} />
+              <label>Conteúdo da mensagem</label>
+              <p className="mono plain-block">{textoExibido || "—"}</p>
+            </>
+          ) : (
+            <p className="hint">Nenhuma mensagem no canal ainda…</p>
+          )}
+        </div>
+
+        <div className="panel">
+          <h2>↩️ Responder pelo canal</h2>
+          <p className="hint">
+            O texto acima faz sentido / é a mensagem que você esperava da Alice?
+            Clique em SIM ou NÃO.
+          </p>
+          <div className="row">
+            <button className="primary-btn ok" disabled={!textoCifrado} onClick={() => responder("SIM")}>
+              ✅ SIM
+            </button>
+            <button className="primary-btn bad" disabled={!textoCifrado} onClick={() => responder("NAO ENTENDI")}>
+              ❌ NÃO
+            </button>
+          </div>
+          {status && <p className="status">{status}</p>}
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -14,12 +14,19 @@ const PAPEIS = {
 
 export default function App() {
   const [papel, setPapel] = useState(() => localStorage.getItem("role") || null);
+  const [modo, setModo] = useState(() => localStorage.getItem("mode") || "didatico");
   const [urlBroker, setUrl] = useState(obterUrlBroker());
   const { estado, online, erro } = useEstadoBroker(papel ? 1000 : 4000);
 
   useEffect(() => {
     if (papel) localStorage.setItem("role", papel);
   }, [papel]);
+
+  useEffect(() => {
+    localStorage.setItem("mode", modo);
+  }, [modo]);
+
+  const realista = modo === "realista";
 
   function salvarBroker(url) {
     definirUrlBroker(url);
@@ -50,6 +57,8 @@ export default function App() {
         urlBroker={urlBroker}
         salvarBroker={salvarBroker}
         online={online}
+        modo={modo}
+        aoMudarModo={setModo}
       />
     );
   }
@@ -63,7 +72,12 @@ export default function App() {
           <span className="brand-emoji">{PAPEIS[papel].emoji}</span>
           <div>
             <h1>{PAPEIS[papel].rotulo}</h1>
-            <small>{PAPEIS[papel].descricao}</small>
+            <small>
+              {PAPEIS[papel].descricao}
+              <span className={`mode-badge ${realista ? "realista" : "didatico"}`}>
+                {realista ? "🕶️ realista" : "📚 didático"}
+              </span>
+            </small>
           </div>
         </div>
         <div className="topbar-right">
@@ -79,7 +93,7 @@ export default function App() {
 
       <main className="layout">
         <section className="primary">
-          <Tela estado={estado} online={online} />
+          <Tela estado={estado} online={online} realista={realista} />
         </section>
         <aside className="sidebar">
           <ChannelLog log={estado.log} />
@@ -89,7 +103,7 @@ export default function App() {
   );
 }
 
-function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online }) {
+function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online, modo, aoMudarModo }) {
   const [rascunho, setRascunho] = useState(urlBroker);
   return (
     <div className="landing">
@@ -114,6 +128,36 @@ function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online }) {
           Use o IP da máquina que roda o broker na rede local. Status:{" "}
           {online ? "conectado ✅" : "sem conexão ❌"}
         </small>
+      </div>
+
+      <div className="mode-select">
+        <label>Modo de exibição</label>
+        <div className="mode-options">
+          <button
+            type="button"
+            className={`mode-card ${modo === "didatico" ? "active" : ""}`}
+            onClick={() => aoMudarModo("didatico")}
+          >
+            <strong>📚 Didático</strong>
+            <span>
+              Mostra tudo para ensinar: grade texto→chave→cifra da Alice, a análise
+              completa do atacante (IC e qui-quadrado) e avisa o Bob quando a mensagem
+              foi injetada.
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`mode-card ${modo === "realista" ? "active" : ""}`}
+            onClick={() => aoMudarModo("realista")}
+          >
+            <strong>🕶️ Realista</strong>
+            <span>
+              Cada papel só vê o que veria na vida real: o Bob não sabe que foi
+              injetado (julga pelo conteúdo), o atacante trabalha como caixa-preta
+              (sem a análise) e a Alice não mostra a grade da cifra.
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className="role-cards">

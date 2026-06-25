@@ -9,7 +9,7 @@ const MENSAGEM_PADRAO =
   "VOCE CONSEGUIR DECIFRAR ESTA MENSAGEM CORRETAMENTE RESPONDA COM SIM PARA " +
   "CONFIRMAR QUE A NOSSA COMUNICACAO SEGURA ESTA FUNCIONANDO PERFEITAMENTE BEM";
 
-export default function Alice({ estado }) {
+export default function Alice({ estado, realista }) {
   const [mensagem, setMensagem] = useState(MENSAGEM_PADRAO);
   const [chave, setChave] = useState("SECRETO");
   const [status, setStatus] = useState(null);
@@ -47,7 +47,14 @@ export default function Alice({ estado }) {
 
       <div className="panel">
         <h2>🔡 Texto cifrado (Vigenère)</h2>
-        <VisaoCifra textoClaro={mensagem.toUpperCase()} chave={chave.toUpperCase()} textoCifrado={textoCifrado} />
+        {realista ? (
+          <>
+            <label>É isto que trafega pelo canal:</label>
+            <p className="mono cipher-block">{textoCifrado || "—"}</p>
+          </>
+        ) : (
+          <VisaoCifra textoClaro={mensagem.toUpperCase()} chave={chave.toUpperCase()} textoCifrado={textoCifrado} />
+        )}
       </div>
 
       <div className="panel">

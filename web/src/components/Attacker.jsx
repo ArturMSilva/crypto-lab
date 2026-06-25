@@ -5,7 +5,7 @@ import BarChart from "./BarChart.jsx";
 
 const AVANCO_MS = 1500; // pausa entre tentativas (para a turma acompanhar)
 
-export default function Attacker({ estado }) {
+export default function Attacker({ estado, realista }) {
   const canal = estado?.channel;
 
   // Captura o texto cifrado ORIGINAL de Alice. As injeções do próprio atacante
@@ -183,7 +183,9 @@ export default function Attacker({ estado }) {
         )}
       </div>
 
-      {/* ---- Análise criptográfica (sempre visível) ---- */}
+      {/* ---- Análise criptográfica (oculta no modo realista: caixa-preta) ---- */}
+      {!realista && (
+      <>
       <div className="panel">
         <h2>① Índice de Coincidência por tamanho de chave</h2>
         <p className="hint">
@@ -216,6 +218,8 @@ export default function Attacker({ estado }) {
           ))}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
