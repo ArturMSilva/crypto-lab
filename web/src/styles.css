@@ -80,12 +80,14 @@ label { font-size: .85rem; color: var(--muted); display: block; margin-top: .4re
 }
 .mode-card:hover { border-color: var(--accent); }
 .mode-card.active { border-color: var(--accent); background: var(--panel-2); box-shadow: 0 0 0 1px var(--accent) inset; }
-.mode-card strong { font-size: 1.05rem; }
+.mode-card strong { font-size: 1.05rem; display: flex; align-items: center; gap: .4rem; }
 .mode-card span { color: var(--muted); font-size: .82rem; }
 @media (max-width: 620px) { .mode-options { grid-template-columns: 1fr; } }
 
 .mode-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
   margin-left: .5rem;
   padding: .05rem .45rem;
   border-radius: 999px;
@@ -95,6 +97,22 @@ label { font-size: .85rem; color: var(--muted); display: block; margin-top: .4re
 }
 .mode-badge.realista { color: var(--attacker); border-color: var(--attacker); }
 .mode-badge.didatico { color: var(--accent); border-color: var(--accent); }
+
+/* --- Ícones (lucide-react) --- */
+.panel h2 { display: flex; align-items: center; gap: .45rem; }
+.landing h1 { display: inline-flex; align-items: center; gap: .5rem; }
+.primary-btn, .ghost { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
+.inline-ok, .inline-bad { display: inline-flex; align-items: center; gap: .25rem; }
+.inline-ok { color: var(--ok); }
+.inline-bad { color: var(--bad); }
+.attempt-icon { display: inline-flex; align-items: center; }
+.reply, .warn { display: flex; align-items: center; gap: .45rem; }
+.result.big { display: flex; align-items: center; gap: .45rem; }
+.result svg, label svg { vertical-align: -2px; margin-right: .15rem; }
+/* avatares coloridos por papel */
+.role-alice .brand-emoji, .role-card.role-alice .role-emoji { color: var(--alice); }
+.role-bob .brand-emoji, .role-card.role-bob .role-emoji { color: var(--bob); }
+.role-attacker .brand-emoji, .role-card.role-attacker .role-emoji { color: var(--attacker); }
 
 .role-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .role-card {

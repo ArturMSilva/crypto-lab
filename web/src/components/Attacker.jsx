@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Ear, Target, Bot, Play, Pause, RotateCcw, Check, X, Hourglass, Trophy, FileText } from "lucide-react";
 import { quebrarVigenere, candidatosOrdenados, IC_PT } from "../lib/vigenere.js";
 import { broker } from "../lib/broker.js";
 import BarChart from "./BarChart.jsx";
@@ -99,7 +100,7 @@ export default function Attacker({ estado, realista }) {
     return (
       <div className="screen">
         <div className="panel">
-          <h2>👂 Monitorando o canal…</h2>
+          <h2><Ear size={18} /> Monitorando o canal…</h2>
           <p className="hint">Nenhuma mensagem interceptada ainda. Aguardando Alice enviar.</p>
         </div>
       </div>
@@ -112,13 +113,13 @@ export default function Attacker({ estado, realista }) {
   return (
     <div className="screen">
       <div className="panel intercepted">
-        <h2>🎯 Mensagem interceptada</h2>
+        <h2><Target size={18} /> Mensagem interceptada</h2>
         <p className="mono cipher-block">{capturado}</p>
       </div>
 
       {/* ---- Modo automático ---- */}
       <div className={`panel ${fase === "sucesso" ? "highlight" : ""}`}>
-        <h2>🤖 Modo automático</h2>
+        <h2><Bot size={18} /> Modo automático</h2>
         <p className="hint">
           O atacante refina cada palpite por <em>hill-climbing</em> (ajusta a chave
           maximizando o quanto o texto “parece português”) e tenta primeiro o mais
@@ -127,17 +128,17 @@ export default function Attacker({ estado, realista }) {
         <div className="row">
           {!automatico && fase !== "sucesso" && (
             <button className="primary-btn" onClick={iniciarAuto}>
-              ▶ Iniciar ataque automático
+              <Play size={16} /> Iniciar ataque automático
             </button>
           )}
           {automatico && (
             <button className="primary-btn bad" onClick={pararAuto}>
-              ⏸ Parar
+              <Pause size={16} /> Parar
             </button>
           )}
           {fase === "sucesso" && (
             <button className="ghost" onClick={iniciarAuto}>
-              ↻ Rodar de novo
+              <RotateCcw size={16} /> Rodar de novo
             </button>
           )}
         </div>
@@ -159,7 +160,13 @@ export default function Attacker({ estado, realista }) {
             {tentativas.map((a, i) => (
               <li key={i} className={`attempt ${a.resultado}`}>
                 <span className="attempt-icon">
-                  {a.resultado === "sim" ? "✅" : a.resultado === "nao" ? "❌" : "⏳"}
+                  {a.resultado === "sim" ? (
+                    <Check size={16} />
+                  ) : a.resultado === "nao" ? (
+                    <X size={16} />
+                  ) : (
+                    <Hourglass size={15} />
+                  )}
                 </span>
                 <span className="attempt-key">
                   tam {a.tamChave} ·{" "}
@@ -176,8 +183,8 @@ export default function Attacker({ estado, realista }) {
 
         {descoberto && (
           <div className="success-box">
-            <p className="result big">🏆 Chave secreta descoberta: <strong>{descoberto.chave}</strong></p>
-            <label>📄 Mensagem original</label>
+            <p className="result big"><Trophy size={20} /> Chave secreta descoberta: <strong>{descoberto.chave}</strong></p>
+            <label><FileText size={15} /> Mensagem original</label>
             <p className="mono plain-block">{descoberto.decifrado}</p>
           </div>
         )}

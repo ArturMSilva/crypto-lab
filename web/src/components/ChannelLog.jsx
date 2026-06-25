@@ -1,7 +1,9 @@
+import { Radio } from "lucide-react";
+
 export default function ChannelLog({ log }) {
   return (
     <div className="panel log-panel">
-      <h2>📡 Canal inseguro (log)</h2>
+      <h2><Radio size={18} /> Canal inseguro (log)</h2>
       <p className="hint">Tudo que trafega aqui é visível para qualquer um.</p>
       <ul className="log">
         {(log || []).length === 0 && <li className="log-empty">Sem eventos ainda…</li>}

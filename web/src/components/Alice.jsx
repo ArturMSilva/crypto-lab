@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PenLine, Lock, FileLock2, Inbox, CircleCheck, TriangleAlert } from "lucide-react";
 import { cifrarVigenere } from "../lib/vigenere.js";
 import { broker } from "../lib/broker.js";
 
@@ -32,7 +33,7 @@ export default function Alice({ estado, realista }) {
   return (
     <div className="screen">
       <div className="panel">
-        <h2>✉️ Compor mensagem</h2>
+        <h2><PenLine size={18} /> Compor mensagem</h2>
         <label>Mensagem (texto claro)</label>
         <textarea rows={5} value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
 
@@ -40,13 +41,13 @@ export default function Alice({ estado, realista }) {
         <input value={chave} onChange={(e) => setChave(e.target.value)} />
 
         <button className="primary-btn" onClick={enviar}>
-          🔒 Cifrar e enviar pelo canal
+          <Lock size={16} /> Cifrar e enviar pelo canal
         </button>
         {status && <p className="status">{status}</p>}
       </div>
 
       <div className="panel">
-        <h2>🔡 Texto cifrado (Vigenère)</h2>
+        <h2><FileLock2 size={18} /> Texto cifrado (Vigenère)</h2>
         {realista ? (
           <>
             <label>É isto que trafega pelo canal:</label>
@@ -58,13 +59,20 @@ export default function Alice({ estado, realista }) {
       </div>
 
       <div className="panel">
-        <h2>📬 Resposta de Bob</h2>
+        <h2><Inbox size={18} /> Resposta de Bob</h2>
         {resposta ? (
           <p className={`reply ${resposta.trim().toUpperCase() === "SIM" ? "ok" : "bad"}`}>
-            Bob respondeu: <strong>{resposta}</strong>
-            {resposta.trim().toUpperCase() === "SIM"
-              ? " ✅ comunicação compreendida"
-              : " ⚠️ Bob não entendeu"}
+            {resposta.trim().toUpperCase() === "SIM" ? (
+              <CircleCheck size={16} />
+            ) : (
+              <TriangleAlert size={16} />
+            )}
+            <span>
+              Bob respondeu: <strong>{resposta}</strong>
+              {resposta.trim().toUpperCase() === "SIM"
+                ? " — comunicação compreendida"
+                : " — Bob não entendeu"}
+            </span>
           </p>
         ) : (
           <p className="hint">Aguardando resposta…</p>

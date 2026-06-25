@@ -1,4 +1,15 @@
 import { useEffect, useState } from "react";
+import {
+  UserRound,
+  CircleUserRound,
+  VenetianMask,
+  Lock,
+  RotateCcw,
+  Glasses,
+  GraduationCap,
+  Check,
+  X,
+} from "lucide-react";
 import { obterUrlBroker, definirUrlBroker, broker } from "./lib/broker.js";
 import { useEstadoBroker } from "./hooks/useBrokerState.js";
 import Alice from "./components/Alice.jsx";
@@ -7,9 +18,9 @@ import Attacker from "./components/Attacker.jsx";
 import ChannelLog from "./components/ChannelLog.jsx";
 
 const PAPEIS = {
-  alice: { rotulo: "Alice", emoji: "👩", descricao: "Cifra e envia a mensagem" },
-  bob: { rotulo: "Bob", emoji: "🧑", descricao: "Recebe e decifra a mensagem" },
-  attacker: { rotulo: "Atacante", emoji: "🕵️", descricao: "Intercepta e quebra a cifra" },
+  alice: { rotulo: "Alice", Icone: UserRound, descricao: "Cifra e envia a mensagem" },
+  bob: { rotulo: "Bob", Icone: CircleUserRound, descricao: "Recebe e decifra a mensagem" },
+  attacker: { rotulo: "Atacante", Icone: VenetianMask, descricao: "Intercepta e quebra a cifra" },
 };
 
 export default function App() {
@@ -64,18 +75,20 @@ export default function App() {
   }
 
   const Tela = { alice: Alice, bob: Bob, attacker: Attacker }[papel];
+  const IconePapel = PAPEIS[papel].Icone;
 
   return (
     <div className={`app role-${papel}`}>
       <header className="topbar">
         <div className="brand">
-          <span className="brand-emoji">{PAPEIS[papel].emoji}</span>
+          <IconePapel className="brand-emoji" size={34} strokeWidth={1.75} />
           <div>
             <h1>{PAPEIS[papel].rotulo}</h1>
             <small>
               {PAPEIS[papel].descricao}
               <span className={`mode-badge ${realista ? "realista" : "didatico"}`}>
-                {realista ? "🕶️ realista" : "📚 didático"}
+                {realista ? <Glasses size={13} /> : <GraduationCap size={13} />}
+                {realista ? "realista" : "didático"}
               </span>
             </small>
           </div>
@@ -83,7 +96,7 @@ export default function App() {
         <div className="topbar-right">
           <StatusBroker online={online} url={urlBroker} erro={erro} />
           <button className="ghost danger" onClick={reiniciarTudo} title="Limpa o canal e recomeça do zero">
-            🔄 Reiniciar tudo
+            <RotateCcw size={16} /> Reiniciar tudo
           </button>
           <button className="ghost" onClick={() => setPapel(null)}>
             Trocar papel
@@ -107,7 +120,7 @@ function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online, modo, aoM
   const [rascunho, setRascunho] = useState(urlBroker);
   return (
     <div className="landing">
-      <h1>🔐 Crypto Lab — Vigenère MitM</h1>
+      <h1><Lock size={26} strokeWidth={2} /> Crypto Lab — Vigenère MitM</h1>
       <p className="subtitle">
         Escolha o papel deste notebook. Os três se comunicam pelo mesmo
         <strong> canal inseguro</strong> (broker).
@@ -126,7 +139,11 @@ function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online, modo, aoM
         </div>
         <small>
           Use o IP da máquina que roda o broker na rede local. Status:{" "}
-          {online ? "conectado ✅" : "sem conexão ❌"}
+          {online ? (
+            <span className="inline-ok"><Check size={14} /> conectado</span>
+          ) : (
+            <span className="inline-bad"><X size={14} /> sem conexão</span>
+          )}
         </small>
       </div>
 
@@ -138,7 +155,7 @@ function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online, modo, aoM
             className={`mode-card ${modo === "didatico" ? "active" : ""}`}
             onClick={() => aoMudarModo("didatico")}
           >
-            <strong>📚 Didático</strong>
+            <strong><GraduationCap size={18} /> Didático</strong>
             <span>
               Mostra tudo para ensinar: grade texto→chave→cifra da Alice, a análise
               completa do atacante (IC e qui-quadrado) e avisa o Bob quando a mensagem
@@ -150,7 +167,7 @@ function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online, modo, aoM
             className={`mode-card ${modo === "realista" ? "active" : ""}`}
             onClick={() => aoMudarModo("realista")}
           >
-            <strong>🕶️ Realista</strong>
+            <strong><Glasses size={18} /> Realista</strong>
             <span>
               Cada papel só vê o que veria na vida real: o Bob não sabe que foi
               injetado (julga pelo conteúdo), o atacante trabalha como caixa-preta
@@ -161,13 +178,16 @@ function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online, modo, aoM
       </div>
 
       <div className="role-cards">
-        {Object.entries(papeis).map(([chave, p]) => (
-          <button key={chave} className={`role-card role-${chave}`} onClick={() => aoEscolher(chave)}>
-            <span className="role-emoji">{p.emoji}</span>
-            <strong>{p.rotulo}</strong>
-            <span>{p.descricao}</span>
-          </button>
-        ))}
+        {Object.entries(papeis).map(([chave, p]) => {
+          const Icone = p.Icone;
+          return (
+            <button key={chave} className={`role-card role-${chave}`} onClick={() => aoEscolher(chave)}>
+              <Icone className="role-emoji" size={48} strokeWidth={1.5} />
+              <strong>{p.rotulo}</strong>
+              <span>{p.descricao}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
