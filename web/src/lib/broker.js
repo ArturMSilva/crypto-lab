@@ -1,48 +1,48 @@
 // Cliente do broker (canal inseguro). A URL é configurável porque, nos 3
 // notebooks, o broker roda em um host da rede local acessível por IP.
 
-const KEY = "brokerUrl";
+const CHAVE_LS = "brokerUrl";
 
-export function getBrokerUrl() {
-  return localStorage.getItem(KEY) || defaultBrokerUrl();
+export function obterUrlBroker() {
+  return localStorage.getItem(CHAVE_LS) || urlBrokerPadrao();
 }
 
-export function setBrokerUrl(url) {
-  localStorage.setItem(KEY, url.replace(/\/+$/, ""));
+export function definirUrlBroker(url) {
+  localStorage.setItem(CHAVE_LS, url.replace(/\/+$/, ""));
 }
 
 // Por padrão, assume o broker no mesmo host onde a página foi aberta, porta 5000.
-function defaultBrokerUrl() {
+function urlBrokerPadrao() {
   const host = window.location.hostname || "localhost";
   return `http://${host}:5000`;
 }
 
-async function req(path, options) {
-  const res = await fetch(getBrokerUrl() + path, options);
-  if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+async function requisitar(caminho, opcoes) {
+  const res = await fetch(obterUrlBroker() + caminho, opcoes);
+  if (!res.ok) throw new Error(`${caminho} → HTTP ${res.status}`);
   return res.json();
 }
 
 export const broker = {
-  getState: () => req("/state"),
-  send: (ciphertext, attempt = 1) =>
-    req("/send", {
+  obterEstado: () => requisitar("/state"),
+  enviar: (textoCifrado, tentativa = 1) =>
+    requisitar("/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ from: "alice", ciphertext, attempt }),
+      body: JSON.stringify({ from: "alice", ciphertext: textoCifrado, attempt: tentativa }),
     }),
-  reply: (reply) =>
-    req("/reply", {
+  responder: (resposta) =>
+    requisitar("/reply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reply }),
+      body: JSON.stringify({ reply: resposta }),
     }),
-  inject: (ciphertext, note, attempt = 1) =>
-    req("/inject", {
+  injetar: (textoCifrado, nota, tentativa = 1) =>
+    requisitar("/inject", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ciphertext, note, attempt }),
+      body: JSON.stringify({ ciphertext: textoCifrado, note: nota, attempt: tentativa }),
     }),
-  clearReply: () => req("/reply", { method: "DELETE" }),
-  reset: () => req("/reset", { method: "POST" }),
+  limparResposta: () => requisitar("/reply", { method: "DELETE" }),
+  reiniciar: () => requisitar("/reset", { method: "POST" }),
 };

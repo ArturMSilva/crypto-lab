@@ -10,46 +10,46 @@ from datetime import datetime
 import json
 
 # Estado compartilhado (canal inseguro). Tudo aqui pode ser lido por qualquer um.
-state = {
+estado = {
     "channel": None,   # mensagem atual trafegando (de Alice ou injetada pelo atacante)
     "reply": None,     # resposta de Bob
     "log": [],         # histórico de eventos do canal
 }
 
 
-def log_event(actor: str, text: str):
-    entry = {
+def registrar_evento(ator: str, texto: str):
+    entrada = {
         "t": datetime.now().strftime("%H:%M:%S"),
-        "actor": actor,          # alice | bob | attacker | system
-        "text": text,
+        "actor": ator,           # alice | bob | attacker | system
+        "text": texto,
     }
-    state["log"].append(entry)
-    state["log"] = state["log"][-100:]  # mantém só os últimos 100 eventos
-    print(f"[{entry['t']}] [{actor.upper()}] {text}")
+    estado["log"].append(entrada)
+    estado["log"] = estado["log"][-100:]  # mantém só os últimos 100 eventos
+    print(f"[{entrada['t']}] [{ator.upper()}] {texto}")
 
 
-class BrokerHandler(BaseHTTPRequestHandler):
+class ManipuladorBroker(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass  # silencia o log padrão do http.server
 
-    # ---- helpers -------------------------------------------------------
+    # ---- auxiliares ----------------------------------------------------
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
-    def _send_json(self, data, code=200):
-        body = json.dumps(data).encode()
-        self.send_response(code)
+    def _enviar_json(self, dados, codigo=200):
+        corpo = json.dumps(dados).encode()
+        self.send_response(codigo)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(len(corpo)))
         self._cors()
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.write(corpo)
 
-    def _read_body(self):
-        length = int(self.headers.get("Content-Length", 0))
-        return json.loads(self.rfile.read(length)) if length else {}
+    def _ler_corpo(self):
+        tamanho = int(self.headers.get("Content-Length", 0))
+        return json.loads(self.rfile.read(tamanho)) if tamanho else {}
 
     # ---- preflight CORS ------------------------------------------------
     def do_OPTIONS(self):
@@ -61,80 +61,80 @@ class BrokerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/state":
             # Tudo o que a interface web precisa em uma única chamada.
-            self._send_json(state)
+            self._enviar_json(estado)
 
         elif self.path == "/message":
             # Compatibilidade com os scripts Python (Bob/atacante leem aqui).
-            self._send_json(state["channel"] or {})
+            self._enviar_json(estado["channel"] or {})
 
         elif self.path == "/reply":
-            self._send_json({"reply": state["reply"]})
+            self._enviar_json({"reply": estado["reply"]})
 
         elif self.path == "/log":
-            self._send_json({"log": state["log"]})
+            self._enviar_json({"log": estado["log"]})
 
         else:
-            self._send_json({"error": "rota não encontrada"}, 404)
+            self._enviar_json({"error": "rota não encontrada"}, 404)
 
     # ---- escrita -------------------------------------------------------
     def do_POST(self):
-        data = self._read_body()
+        dados = self._ler_corpo()
 
         if self.path == "/send":
             # Alice envia mensagem cifrada para Bob.
-            state["channel"] = {
-                "ciphertext": data["ciphertext"],
-                "from": data.get("from", "alice"),
-                "attempt": data.get("attempt", 1),
+            estado["channel"] = {
+                "ciphertext": dados["ciphertext"],
+                "from": dados.get("from", "alice"),
+                "attempt": dados.get("attempt", 1),
                 "injected": False,
             }
-            state["reply"] = None  # limpa resposta anterior
-            log_event("alice", f"→ Bob (cifrado): {data['ciphertext']}")
-            self._send_json({"ok": True})
+            estado["reply"] = None  # limpa resposta anterior
+            registrar_evento("alice", f"→ Bob (cifrado): {dados['ciphertext']}")
+            self._enviar_json({"ok": True})
 
         elif self.path == "/reply":
             # Bob responde.
-            state["reply"] = data["reply"]
-            log_event("bob", f"→ Alice: {data['reply']}")
-            self._send_json({"ok": True})
+            estado["reply"] = dados["reply"]
+            registrar_evento("bob", f"→ Alice: {dados['reply']}")
+            self._enviar_json({"ok": True})
 
         elif self.path == "/inject":
             # Atacante injeta/manipula a mensagem no canal (MitM ativo).
-            state["channel"] = {
-                "ciphertext": data["ciphertext"],
+            estado["channel"] = {
+                "ciphertext": dados["ciphertext"],
                 "from": "attacker",
-                "attempt": data.get("attempt", 1),
+                "attempt": dados.get("attempt", 1),
                 "injected": True,
-                "note": data.get("note", ""),
+                "note": dados.get("note", ""),
             }
-            log_event("attacker", f"⚡ INJETOU: {data['ciphertext']} | {data.get('note', '')}")
-            self._send_json({"ok": True})
+            registrar_evento("attacker", f"⚡ INJETOU: {dados['ciphertext']} | {dados.get('note', '')}")
+            self._enviar_json({"ok": True})
 
         elif self.path == "/reset":
-            state["channel"] = None
-            state["reply"] = None
-            state["log"] = []
-            log_event("system", "Canal reiniciado")
-            self._send_json({"ok": True})
+            estado["channel"] = None
+            estado["reply"] = None
+            estado["log"] = []
+            registrar_evento("system", "Canal reiniciado")
+            self._enviar_json({"ok": True})
 
         else:
-            self._send_json({"error": "rota não encontrada"}, 404)
+            self._enviar_json({"error": "rota não encontrada"}, 404)
 
     def do_DELETE(self):
         if self.path == "/reply":
-            state["reply"] = None
-            self._send_json({"ok": True})
+            estado["reply"] = None
+            self._enviar_json({"ok": True})
         elif self.path == "/reset":
-            state["channel"] = None
-            state["reply"] = None
-            state["log"] = []
-            self._send_json({"ok": True})
+            estado["channel"] = None
+            estado["reply"] = None
+            estado["log"] = []
+            self._enviar_json({"ok": True})
         else:
-            self._send_json({"error": "not found"}, 404)
+            self._enviar_json({"error": "not found"}, 404)
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("0.0.0.0", 5000), BrokerHandler)
+    servidor = HTTPServer(("0.0.0.0", 5000), ManipuladorBroker)
     print("[BROKER] Canal inseguro iniciado na porta 5000")
     print("[BROKER] Qualquer mensagem pode ser interceptada!\n")
-    server.serve_forever()
+    servidor.serve_forever()

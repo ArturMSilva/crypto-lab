@@ -10,15 +10,15 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 sys.path.insert(0, '/app/shared')
-from vigenere import vigenere_decrypt
+from vigenere import decifrar_vigenere
 
 # Configurações
-SECRET_KEY = "SECRETO"          # Chave compartilhada com Alice
-BROKER_URL = "http://broker:5000"
-BOB_PORT = 8002
+CHAVE_SECRETA = "SECRETO"          # Chave compartilhada com Alice
+URL_BROKER = "http://broker:5000"
+PORTA_BOB = 8002
 
 # O que Bob espera receber (para validação) - deve ser identico ao de Alice
-EXPECTED_MESSAGE = (
+MENSAGEM_ESPERADA = (
     "OLA BOB ESTA E UMA MENSAGEM SECRETA ENVIADA POR ALICE ATRAVES DO CANAL "
     "INSEGURO ESPERO QUE NINGUEM CONSIGA LER NOSSA CONVERSA POIS ESTAMOS USANDO "
     "A CIFRA DE VIGENERE COM UMA CHAVE COMPARTILHADA APENAS ENTRE NOS DOIS SE "
@@ -27,7 +27,7 @@ EXPECTED_MESSAGE = (
 )
 
 
-class BobHandler(BaseHTTPRequestHandler):
+class ManipuladorBob(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
@@ -39,42 +39,42 @@ class BobHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"status": "Bob online"}).encode())
 
 
-def listen_for_messages():
+def escutar_mensagens():
     """Bob fica ouvindo o broker por novas mensagens"""
     time.sleep(3)
     print("[BOB] Aguardando mensagens no broker...")
-    last_attempt = 0
+    ultima_tentativa = 0
 
     while True:
         try:
-            resp = requests.get(f"{BROKER_URL}/message", timeout=5)
-            data = resp.json()
+            resp = requests.get(f"{URL_BROKER}/message", timeout=5)
+            dados = resp.json()
 
-            if data.get("ciphertext") and data.get("attempt", 0) != last_attempt:
-                attempt = data["attempt"]
-                last_attempt = attempt
-                received_text = data["ciphertext"]
+            if dados.get("ciphertext") and dados.get("attempt", 0) != ultima_tentativa:
+                tentativa = dados["attempt"]
+                ultima_tentativa = tentativa
+                texto_recebido = dados["ciphertext"]
 
                 print("\n" + "=" * 50)
-                print(f"[BOB] 📨 Mensagem recebida (tentativa {attempt}): {received_text}")
+                print(f"[BOB] 📨 Mensagem recebida (tentativa {tentativa}): {texto_recebido}")
 
                 # Bob descriptografa com a chave correta
-                decrypted = vigenere_decrypt(received_text, SECRET_KEY)
-                print(f"[BOB] 🔓 Descriptografado com chave '{SECRET_KEY}': {decrypted}")
+                decifrado = decifrar_vigenere(texto_recebido, CHAVE_SECRETA)
+                print(f"[BOB] 🔓 Descriptografado com chave '{CHAVE_SECRETA}': {decifrado}")
 
                 # Verifica se faz sentido
-                if decrypted.strip() == EXPECTED_MESSAGE:
-                    reply = "SIM"
-                    print(f"[BOB] ✅ Mensagem compreendida! Respondendo: '{reply}'")
+                if decifrado.strip() == MENSAGEM_ESPERADA:
+                    resposta = "SIM"
+                    print(f"[BOB] ✅ Mensagem compreendida! Respondendo: '{resposta}'")
                 else:
-                    reply = "NAO ENTENDI"
-                    print(f"[BOB] ❌ Mensagem não faz sentido. Respondendo: '{reply}'")
+                    resposta = "NAO ENTENDI"
+                    print(f"[BOB] ❌ Mensagem não faz sentido. Respondendo: '{resposta}'")
 
                 # Envia resposta ao broker
-                requests.post(f"{BROKER_URL}/reply", json={"reply": reply}, timeout=5)
+                requests.post(f"{URL_BROKER}/reply", json={"reply": resposta}, timeout=5)
                 print("=" * 50)
 
-                if reply == "SIM":
+                if resposta == "SIM":
                     print("\n[BOB] 🎉 Comunicação bem-sucedida! Encerrando...")
                     break
 
@@ -85,9 +85,9 @@ def listen_for_messages():
 
 
 if __name__ == "__main__":
-    t = threading.Thread(target=listen_for_messages, daemon=True)
+    t = threading.Thread(target=escutar_mensagens, daemon=True)
     t.start()
 
-    server = HTTPServer(("0.0.0.0", BOB_PORT), BobHandler)
-    print(f"[BOB] Servidor iniciado na porta {BOB_PORT}")
-    server.serve_forever()
+    servidor = HTTPServer(("0.0.0.0", PORTA_BOB), ManipuladorBob)
+    print(f"[BOB] Servidor iniciado na porta {PORTA_BOB}")
+    servidor.serve_forever()

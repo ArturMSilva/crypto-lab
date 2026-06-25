@@ -1,22 +1,22 @@
 // Gráfico de barras horizontal simples, sem dependências.
-// data: [{ label, value }], highlight: índice destacado, lowerIsBetter inverte cor.
-export default function BarChart({ data, highlight, formatValue, threshold }) {
-  const max = Math.max(...data.map((d) => d.value), 1e-9);
+// dados: [{ rotulo, valor }], destaque: índice destacado, limiar desenha a marca.
+export default function BarChart({ dados, destaque, formatarValor, limiar }) {
+  const max = Math.max(...dados.map((d) => d.valor), 1e-9);
   return (
     <div className="barchart">
-      {data.map((d, i) => {
-        const pct = (d.value / max) * 100;
-        const isBest = i === highlight;
+      {dados.map((d, i) => {
+        const pct = (d.valor / max) * 100;
+        const ehMelhor = i === destaque;
         return (
-          <div key={i} className={`bar-row ${isBest ? "best" : ""}`}>
-            <span className="bar-label">{d.label}</span>
+          <div key={i} className={`bar-row ${ehMelhor ? "best" : ""}`}>
+            <span className="bar-label">{d.rotulo}</span>
             <div className="bar-track">
               <div className="bar-fill" style={{ width: `${pct}%` }} />
-              {threshold != null && (
-                <div className="bar-threshold" style={{ left: `${(threshold / max) * 100}%` }} />
+              {limiar != null && (
+                <div className="bar-threshold" style={{ left: `${(limiar / max) * 100}%` }} />
               )}
             </div>
-            <span className="bar-value">{formatValue ? formatValue(d.value) : d.value}</span>
+            <span className="bar-value">{formatarValor ? formatarValor(d.valor) : d.valor}</span>
           </div>
         );
       })}

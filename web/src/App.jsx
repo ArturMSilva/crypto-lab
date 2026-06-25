@@ -1,58 +1,58 @@
 import { useEffect, useState } from "react";
-import { getBrokerUrl, setBrokerUrl } from "./lib/broker.js";
-import { useBrokerState } from "./hooks/useBrokerState.js";
+import { obterUrlBroker, definirUrlBroker } from "./lib/broker.js";
+import { useEstadoBroker } from "./hooks/useBrokerState.js";
 import Alice from "./components/Alice.jsx";
 import Bob from "./components/Bob.jsx";
 import Attacker from "./components/Attacker.jsx";
 import ChannelLog from "./components/ChannelLog.jsx";
 
-const ROLES = {
-  alice: { label: "Alice", emoji: "👩", desc: "Cifra e envia a mensagem" },
-  bob: { label: "Bob", emoji: "🧑", desc: "Recebe e decifra a mensagem" },
-  attacker: { label: "Atacante", emoji: "🕵️", desc: "Intercepta e quebra a cifra" },
+const PAPEIS = {
+  alice: { rotulo: "Alice", emoji: "👩", descricao: "Cifra e envia a mensagem" },
+  bob: { rotulo: "Bob", emoji: "🧑", descricao: "Recebe e decifra a mensagem" },
+  attacker: { rotulo: "Atacante", emoji: "🕵️", descricao: "Intercepta e quebra a cifra" },
 };
 
 export default function App() {
-  const [role, setRole] = useState(() => localStorage.getItem("role") || null);
-  const [brokerUrl, setUrl] = useState(getBrokerUrl());
-  const { state, online, error } = useBrokerState(role ? 1000 : 4000);
+  const [papel, setPapel] = useState(() => localStorage.getItem("role") || null);
+  const [urlBroker, setUrl] = useState(obterUrlBroker());
+  const { estado, online, erro } = useEstadoBroker(papel ? 1000 : 4000);
 
   useEffect(() => {
-    if (role) localStorage.setItem("role", role);
-  }, [role]);
+    if (papel) localStorage.setItem("role", papel);
+  }, [papel]);
 
-  function saveBroker(url) {
-    setBrokerUrl(url);
-    setUrl(getBrokerUrl());
+  function salvarBroker(url) {
+    definirUrlBroker(url);
+    setUrl(obterUrlBroker());
   }
 
-  if (!role) {
+  if (!papel) {
     return (
-      <Landing
-        roles={ROLES}
-        onPick={setRole}
-        brokerUrl={brokerUrl}
-        saveBroker={saveBroker}
+      <Inicio
+        papeis={PAPEIS}
+        aoEscolher={setPapel}
+        urlBroker={urlBroker}
+        salvarBroker={salvarBroker}
         online={online}
       />
     );
   }
 
-  const Screen = { alice: Alice, bob: Bob, attacker: Attacker }[role];
+  const Tela = { alice: Alice, bob: Bob, attacker: Attacker }[papel];
 
   return (
-    <div className={`app role-${role}`}>
+    <div className={`app role-${papel}`}>
       <header className="topbar">
         <div className="brand">
-          <span className="brand-emoji">{ROLES[role].emoji}</span>
+          <span className="brand-emoji">{PAPEIS[papel].emoji}</span>
           <div>
-            <h1>{ROLES[role].label}</h1>
-            <small>{ROLES[role].desc}</small>
+            <h1>{PAPEIS[papel].rotulo}</h1>
+            <small>{PAPEIS[papel].descricao}</small>
           </div>
         </div>
         <div className="topbar-right">
-          <BrokerStatus online={online} url={brokerUrl} error={error} />
-          <button className="ghost" onClick={() => setRole(null)}>
+          <StatusBroker online={online} url={urlBroker} erro={erro} />
+          <button className="ghost" onClick={() => setPapel(null)}>
             Trocar papel
           </button>
         </div>
@@ -60,18 +60,18 @@ export default function App() {
 
       <main className="layout">
         <section className="primary">
-          <Screen state={state} online={online} />
+          <Tela estado={estado} online={online} />
         </section>
         <aside className="sidebar">
-          <ChannelLog log={state.log} />
+          <ChannelLog log={estado.log} />
         </aside>
       </main>
     </div>
   );
 }
 
-function Landing({ roles, onPick, brokerUrl, saveBroker, online }) {
-  const [draft, setDraft] = useState(brokerUrl);
+function Inicio({ papeis, aoEscolher, urlBroker, salvarBroker, online }) {
+  const [rascunho, setRascunho] = useState(urlBroker);
   return (
     <div className="landing">
       <h1>🔐 Crypto Lab — Vigenère MitM</h1>
@@ -84,11 +84,11 @@ function Landing({ roles, onPick, brokerUrl, saveBroker, online }) {
         <label>Endereço do broker (canal inseguro)</label>
         <div className="row">
           <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            value={rascunho}
+            onChange={(e) => setRascunho(e.target.value)}
             placeholder="http://192.168.0.10:5000"
           />
-          <button onClick={() => saveBroker(draft)}>Salvar</button>
+          <button onClick={() => salvarBroker(rascunho)}>Salvar</button>
           <span className={`dot ${online ? "on" : "off"}`} title={online ? "online" : "offline"} />
         </div>
         <small>
@@ -98,11 +98,11 @@ function Landing({ roles, onPick, brokerUrl, saveBroker, online }) {
       </div>
 
       <div className="role-cards">
-        {Object.entries(roles).map(([key, r]) => (
-          <button key={key} className={`role-card role-${key}`} onClick={() => onPick(key)}>
-            <span className="role-emoji">{r.emoji}</span>
-            <strong>{r.label}</strong>
-            <span>{r.desc}</span>
+        {Object.entries(papeis).map(([chave, p]) => (
+          <button key={chave} className={`role-card role-${chave}`} onClick={() => aoEscolher(chave)}>
+            <span className="role-emoji">{p.emoji}</span>
+            <strong>{p.rotulo}</strong>
+            <span>{p.descricao}</span>
           </button>
         ))}
       </div>
@@ -110,9 +110,9 @@ function Landing({ roles, onPick, brokerUrl, saveBroker, online }) {
   );
 }
 
-function BrokerStatus({ online, url, error }) {
+function StatusBroker({ online, url, erro }) {
   return (
-    <div className="broker-status" title={error || url}>
+    <div className="broker-status" title={erro || url}>
       <span className={`dot ${online ? "on" : "off"}`} />
       <span className="broker-url">{url.replace(/^https?:\/\//, "")}</span>
     </div>

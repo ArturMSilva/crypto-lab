@@ -1,101 +1,101 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { crackVigenere, candidatesRanked, PT_IC } from "../lib/vigenere.js";
+import { quebrarVigenere, candidatosOrdenados, IC_PT } from "../lib/vigenere.js";
 import { broker } from "../lib/broker.js";
 import BarChart from "./BarChart.jsx";
 
-const ADVANCE_MS = 1500; // pausa entre tentativas (para a turma acompanhar)
+const AVANCO_MS = 1500; // pausa entre tentativas (para a turma acompanhar)
 
-export default function Attacker({ state }) {
-  const channel = state?.channel;
+export default function Attacker({ estado }) {
+  const canal = estado?.channel;
 
   // Captura o texto cifrado ORIGINAL de Alice. As injeções do próprio atacante
-  // (channel.injected) não devem sobrescrever o alvo da análise.
-  const [captured, setCaptured] = useState(null);
+  // (canal.injected) não devem sobrescrever o alvo da análise.
+  const [capturado, setCapturado] = useState(null);
   useEffect(() => {
-    if (channel && !channel.injected && channel.ciphertext) {
-      setCaptured(channel.ciphertext);
+    if (canal && !canal.injected && canal.ciphertext) {
+      setCapturado(canal.ciphertext);
     }
-  }, [channel?.ciphertext, channel?.injected]);
+  }, [canal?.ciphertext, canal?.injected]);
 
   // Análise "inteligente" (IC + qui-quadrado) usada nos gráficos.
-  const smart = useMemo(() => (captured ? crackVigenere(captured, 10) : null), [captured]);
+  const analise = useMemo(() => (capturado ? quebrarVigenere(capturado, 10) : null), [capturado]);
   // Candidatos do modo automático já REFINADOS por hill-climbing e ordenados
   // do mais provável ao menos provável (tenta primeiro o melhor palpite).
-  const candidates = useMemo(() => (captured ? candidatesRanked(captured, 10) : []), [captured]);
+  const candidatos = useMemo(() => (capturado ? candidatosOrdenados(capturado, 10) : []), [capturado]);
 
   // ---- estado do modo automático -----------------------------------
-  const [auto, setAuto] = useState(false);
-  const [index, setIndex] = useState(0);
-  const [attempts, setAttempts] = useState([]); // {keyLen, key, decrypted, result}
-  const [phase, setPhase] = useState("idle"); // idle | waiting | advancing | success | exhausted
+  const [automatico, setAutomatico] = useState(false);
+  const [indice, setIndice] = useState(0);
+  const [tentativas, setTentativas] = useState([]); // {tamChave, chave, decifrado, resultado}
+  const [fase, setFase] = useState("ocioso"); // ocioso | aguardando | avancando | sucesso | esgotado
   const [status, setStatus] = useState(null);
-  const indexRef = useRef(0);
-  indexRef.current = index;
+  const indiceRef = useRef(0);
+  indiceRef.current = indice;
 
   // Novo texto interceptado → zera o modo automático.
   useEffect(() => {
-    setAuto(false);
-    setAttempts([]);
-    setPhase("idle");
-    setIndex(0);
-  }, [captured]);
+    setAutomatico(false);
+    setTentativas([]);
+    setFase("ocioso");
+    setIndice(0);
+  }, [capturado]);
 
-  async function tryCandidate(i) {
-    const c = candidates[i];
+  async function tentarCandidato(i) {
+    const c = candidatos[i];
     if (!c) {
-      setPhase("exhausted");
+      setFase("esgotado");
       return;
     }
-    setIndex(i);
-    setAttempts((prev) => [
+    setIndice(i);
+    setTentativas((prev) => [
       ...prev,
-      { keyLen: c.keyLen, key: c.key, baseKey: c.baseKey, decrypted: c.decrypted, result: "pending" },
+      { tamChave: c.tamChave, chave: c.chave, chaveBase: c.chaveBase, decifrado: c.decifrado, resultado: "pendente" },
     ]);
-    setPhase("waiting");
+    setFase("aguardando");
     try {
-      await broker.clearReply();
-      await broker.inject(c.decrypted, `Auto: testando chave "${c.key}" (tamanho ${c.keyLen})`, c.keyLen);
+      await broker.limparResposta();
+      await broker.injetar(c.decifrado, `Auto: testando chave "${c.chave}" (tamanho ${c.tamChave})`, c.tamChave);
     } catch (e) {
       setStatus("Erro ao injetar: " + e.message);
     }
   }
 
-  function startAuto() {
-    setAttempts([]);
-    setPhase("idle");
-    setAuto(true);
-    tryCandidate(0);
+  function iniciarAuto() {
+    setTentativas([]);
+    setFase("ocioso");
+    setAutomatico(true);
+    tentarCandidato(0);
   }
 
-  function stopAuto() {
-    setAuto(false);
-    setPhase("idle");
+  function pararAuto() {
+    setAutomatico(false);
+    setFase("ocioso");
   }
 
   // Reage à resposta do Bob enquanto aguarda.
   useEffect(() => {
-    if (!auto || phase !== "waiting") return;
-    const reply = state?.reply;
-    if (!reply) return;
-    const r = reply.trim().toUpperCase();
+    if (!automatico || fase !== "aguardando") return;
+    const resposta = estado?.reply;
+    if (!resposta) return;
+    const r = resposta.trim().toUpperCase();
 
-    setAttempts((prev) => markLast(prev, r === "SIM" ? "sim" : "nao"));
+    setTentativas((prev) => marcarUltima(prev, r === "SIM" ? "sim" : "nao"));
 
     if (r === "SIM") {
-      setPhase("success");
-      setAuto(false);
+      setFase("sucesso");
+      setAutomatico(false);
     } else {
-      setPhase("advancing");
-      const next = indexRef.current + 1;
+      setFase("avancando");
+      const proximo = indiceRef.current + 1;
       setTimeout(async () => {
-        await broker.clearReply().catch(() => {});
-        if (next < candidates.length) tryCandidate(next);
-        else setPhase("exhausted");
-      }, ADVANCE_MS);
+        await broker.limparResposta().catch(() => {});
+        if (proximo < candidatos.length) tentarCandidato(proximo);
+        else setFase("esgotado");
+      }, AVANCO_MS);
     }
-  }, [state?.reply, auto, phase]);
+  }, [estado?.reply, automatico, fase]);
 
-  if (!captured) {
+  if (!capturado) {
     return (
       <div className="screen">
         <div className="panel">
@@ -106,18 +106,18 @@ export default function Attacker({ state }) {
     );
   }
 
-  const current = attempts[attempts.length - 1];
-  const discovered = phase === "success" ? current : null;
+  const atual = tentativas[tentativas.length - 1];
+  const descoberto = fase === "sucesso" ? atual : null;
 
   return (
     <div className="screen">
       <div className="panel intercepted">
         <h2>🎯 Mensagem interceptada</h2>
-        <p className="mono cipher-block">{captured}</p>
+        <p className="mono cipher-block">{capturado}</p>
       </div>
 
       {/* ---- Modo automático ---- */}
-      <div className={`panel ${phase === "success" ? "highlight" : ""}`}>
+      <div className={`panel ${fase === "sucesso" ? "highlight" : ""}`}>
         <h2>🤖 Modo automático</h2>
         <p className="hint">
           O atacante refina cada palpite por <em>hill-climbing</em> (ajusta a chave
@@ -125,60 +125,60 @@ export default function Attacker({ state }) {
           provável. Avança sozinho a cada “NÃO” e para quando o Bob clica “SIM”.
         </p>
         <div className="row">
-          {!auto && phase !== "success" && (
-            <button className="primary-btn" onClick={startAuto}>
+          {!automatico && fase !== "sucesso" && (
+            <button className="primary-btn" onClick={iniciarAuto}>
               ▶ Iniciar ataque automático
             </button>
           )}
-          {auto && (
-            <button className="primary-btn bad" onClick={stopAuto}>
+          {automatico && (
+            <button className="primary-btn bad" onClick={pararAuto}>
               ⏸ Parar
             </button>
           )}
-          {phase === "success" && (
-            <button className="ghost" onClick={startAuto}>
+          {fase === "sucesso" && (
+            <button className="ghost" onClick={iniciarAuto}>
               ↻ Rodar de novo
             </button>
           )}
         </div>
 
-        {phase === "waiting" && (
+        {fase === "aguardando" && (
           <p className="status">
-            Tentando chave <strong>{current?.key}</strong> (tamanho {current?.keyLen})… aguardando
+            Tentando chave <strong>{atual?.chave}</strong> (tamanho {atual?.tamChave})… aguardando
             Bob clicar SIM ou NÃO.
           </p>
         )}
-        {phase === "advancing" && <p className="status">Bob recusou — preparando próxima tentativa…</p>}
-        {phase === "exhausted" && (
+        {fase === "avancando" && <p className="status">Bob recusou — preparando próxima tentativa…</p>}
+        {fase === "esgotado" && (
           <p className="reply bad">Esgotaram-se os candidatos sem confirmação do Bob.</p>
         )}
         {status && <p className="status">{status}</p>}
 
-        {attempts.length > 0 && (
+        {tentativas.length > 0 && (
           <ul className="attempts">
-            {attempts.map((a, i) => (
-              <li key={i} className={`attempt ${a.result}`}>
+            {tentativas.map((a, i) => (
+              <li key={i} className={`attempt ${a.resultado}`}>
                 <span className="attempt-icon">
-                  {a.result === "sim" ? "✅" : a.result === "nao" ? "❌" : "⏳"}
+                  {a.resultado === "sim" ? "✅" : a.resultado === "nao" ? "❌" : "⏳"}
                 </span>
                 <span className="attempt-key">
-                  tam {a.keyLen} ·{" "}
-                  {a.baseKey && a.baseKey !== a.key && (
-                    <span className="attempt-base">{a.baseKey} →</span>
+                  tam {a.tamChave} ·{" "}
+                  {a.chaveBase && a.chaveBase !== a.chave && (
+                    <span className="attempt-base">{a.chaveBase} →</span>
                   )}{" "}
-                  <strong>{a.key}</strong>
+                  <strong>{a.chave}</strong>
                 </span>
-                <span className="attempt-text mono">{a.decrypted.slice(0, 48)}…</span>
+                <span className="attempt-text mono">{a.decifrado.slice(0, 48)}…</span>
               </li>
             ))}
           </ul>
         )}
 
-        {discovered && (
+        {descoberto && (
           <div className="success-box">
-            <p className="result big">🏆 Chave secreta descoberta: <strong>{discovered.key}</strong></p>
+            <p className="result big">🏆 Chave secreta descoberta: <strong>{descoberto.chave}</strong></p>
             <label>📄 Mensagem original</label>
-            <p className="mono plain-block">{discovered.decrypted}</p>
+            <p className="mono plain-block">{descoberto.decifrado}</p>
           </div>
         )}
       </div>
@@ -187,20 +187,20 @@ export default function Attacker({ state }) {
       <div className="panel">
         <h2>① Índice de Coincidência por tamanho de chave</h2>
         <p className="hint">
-          O tamanho correto faz cada grupo parecer português (IC ≈ {PT_IC}); tamanhos
+          O tamanho correto faz cada grupo parecer português (IC ≈ {IC_PT}); tamanhos
           errados embaralham as letras (IC ≈ 0.038).
         </p>
         <BarChart
-          data={smart.icSpectrum.map((d) => ({ label: String(d.keyLen), value: d.avgIc }))}
-          highlight={smart.keyLen - 1}
-          threshold={0.06}
-          formatValue={(v) => v.toFixed(4)}
+          dados={analise.espectroIc.map((d) => ({ rotulo: String(d.tamChave), valor: d.icMedio }))}
+          destaque={analise.tamChave - 1}
+          limiar={0.06}
+          formatarValor={(v) => v.toFixed(4)}
         />
         <p className="result">
-          Tamanho mais provável pela análise: <strong>{smart.keyLen}</strong> → palpite por
-          frequência <strong>{smart.key}</strong>
-          {candidates[0] && candidates[0].key !== smart.key && (
-            <> · refinado → <strong>{candidates[0].key}</strong></>
+          Tamanho mais provável pela análise: <strong>{analise.tamChave}</strong> → palpite por
+          frequência <strong>{analise.chave}</strong>
+          {candidatos[0] && candidatos[0].chave !== analise.chave && (
+            <> · refinado → <strong>{candidatos[0].chave}</strong></>
           )}
         </p>
       </div>
@@ -211,8 +211,8 @@ export default function Attacker({ state }) {
           Cada posição da chave é uma cifra de César; o deslocamento de menor χ² revela a letra.
         </p>
         <div className="positions">
-          {smart.positions.map((pos) => (
-            <PositionCard key={pos.index} pos={pos} />
+          {analise.posicoes.map((pos) => (
+            <CartaoPosicao key={pos.indice} pos={pos} />
           ))}
         </div>
       </div>
@@ -220,32 +220,32 @@ export default function Attacker({ state }) {
   );
 }
 
-function markLast(attempts, result) {
-  const out = attempts.slice();
-  for (let i = out.length - 1; i >= 0; i--) {
-    if (out[i].result === "pending") {
-      out[i] = { ...out[i], result };
+function marcarUltima(tentativas, resultado) {
+  const saida = tentativas.slice();
+  for (let i = saida.length - 1; i >= 0; i--) {
+    if (saida[i].resultado === "pendente") {
+      saida[i] = { ...saida[i], resultado };
       break;
     }
   }
-  return out;
+  return saida;
 }
 
-function PositionCard({ pos }) {
-  const top = pos.chiByShift
-    .map((d) => ({ ...d, letter: String.fromCharCode(65 + d.shift) }))
-    .sort((a, b) => a.chi - b.chi)
+function CartaoPosicao({ pos }) {
+  const top = pos.quiPorDeslocamento
+    .map((d) => ({ ...d, letra: String.fromCharCode(65 + d.deslocamento) }))
+    .sort((a, b) => a.qui - b.qui)
     .slice(0, 5);
   return (
     <div className="position-card">
       <div className="position-head">
-        <span>Posição {pos.index + 1}</span>
-        <span className="key-letter">{pos.keyChar}</span>
+        <span>Posição {pos.indice + 1}</span>
+        <span className="key-letter">{pos.letraChave}</span>
       </div>
       <BarChart
-        data={top.map((d) => ({ label: d.letter, value: d.chi }))}
-        highlight={0}
-        formatValue={(v) => v.toFixed(1)}
+        dados={top.map((d) => ({ rotulo: d.letra, valor: d.qui }))}
+        destaque={0}
+        formatarValor={(v) => v.toFixed(1)}
       />
     </div>
   );

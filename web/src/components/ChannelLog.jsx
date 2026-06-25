@@ -8,11 +8,11 @@ export default function ChannelLog({ log }) {
         {(log || [])
           .slice()
           .reverse()
-          .map((e, i) => (
-            <li key={i} className={`log-item actor-${e.actor}`}>
-              <span className="log-time">{e.t}</span>
-              <span className="log-actor">{e.actor}</span>
-              <span className="log-text">{e.text}</span>
+          .map((evento, i) => (
+            <li key={i} className={`log-item actor-${evento.actor}`}>
+              <span className="log-time">{evento.t}</span>
+              <span className="log-actor">{evento.actor}</span>
+              <span className="log-text">{evento.text}</span>
             </li>
           ))}
       </ul>

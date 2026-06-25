@@ -3,59 +3,59 @@
 
 const A = "A".charCodeAt(0);
 
-const onlyAlpha = (text) =>
-  text
+const apenasLetras = (texto) =>
+  texto
     .toUpperCase()
     .split("")
     .filter((c) => c >= "A" && c <= "Z")
     .join("");
 
-export function vigenereEncrypt(plaintext, key) {
-  plaintext = plaintext.toUpperCase();
-  key = key.toUpperCase();
-  const out = [];
+export function cifrarVigenere(textoClaro, chave) {
+  textoClaro = textoClaro.toUpperCase();
+  chave = chave.toUpperCase();
+  const saida = [];
   let k = 0;
-  for (const ch of plaintext) {
+  for (const ch of textoClaro) {
     if (ch >= "A" && ch <= "Z") {
-      const shift = key.charCodeAt(k % key.length) - A;
-      out.push(String.fromCharCode(((ch.charCodeAt(0) - A + shift) % 26) + A));
+      const deslocamento = chave.charCodeAt(k % chave.length) - A;
+      saida.push(String.fromCharCode(((ch.charCodeAt(0) - A + deslocamento) % 26) + A));
       k++;
     } else {
-      out.push(ch); // mantém espaços e pontuação
+      saida.push(ch); // mantém espaços e pontuação
     }
   }
-  return out.join("");
+  return saida.join("");
 }
 
-export function vigenereDecrypt(ciphertext, key) {
-  ciphertext = ciphertext.toUpperCase();
-  key = key.toUpperCase();
-  const out = [];
+export function decifrarVigenere(textoCifrado, chave) {
+  textoCifrado = textoCifrado.toUpperCase();
+  chave = chave.toUpperCase();
+  const saida = [];
   let k = 0;
-  for (const ch of ciphertext) {
+  for (const ch of textoCifrado) {
     if (ch >= "A" && ch <= "Z") {
-      const shift = key.charCodeAt(k % key.length) - A;
-      out.push(String.fromCharCode(((ch.charCodeAt(0) - A - shift + 26) % 26) + A));
+      const deslocamento = chave.charCodeAt(k % chave.length) - A;
+      saida.push(String.fromCharCode(((ch.charCodeAt(0) - A - deslocamento + 26) % 26) + A));
       k++;
     } else {
-      out.push(ch);
+      saida.push(ch);
     }
   }
-  return out.join("");
+  return saida.join("");
 }
 
-export function indexOfCoincidence(text) {
-  text = onlyAlpha(text);
-  const n = text.length;
+export function indiceDeCoincidencia(texto) {
+  texto = apenasLetras(texto);
+  const n = texto.length;
   if (n < 2) return 0;
   const freq = {};
-  for (const c of text) freq[c] = (freq[c] || 0) + 1;
-  const sum = Object.values(freq).reduce((s, f) => s + f * (f - 1), 0);
-  return sum / (n * (n - 1));
+  for (const c of texto) freq[c] = (freq[c] || 0) + 1;
+  const soma = Object.values(freq).reduce((s, f) => s + f * (f - 1), 0);
+  return soma / (n * (n - 1));
 }
 
 // Frequência relativa das letras em português (%), sem acentos.
-export const PT_FREQ = {
+export const FREQ_PT = {
   A: 14.63, B: 1.04, C: 3.88, D: 4.99, E: 12.57, F: 1.02,
   G: 1.3, H: 1.28, I: 6.18, J: 0.4, K: 0.02, L: 2.78,
   M: 4.74, N: 5.05, O: 10.73, P: 2.52, Q: 1.2, R: 6.53,
@@ -63,99 +63,99 @@ export const PT_FREQ = {
   Y: 0.01, Z: 0.47,
 };
 
-export const PT_IC = 0.072;
-const THRESHOLD = 0.06; // acima disso, consideramos "idioma natural"
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+export const IC_PT = 0.072;
+const LIMIAR = 0.06; // acima disso, consideramos "idioma natural"
+const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 // Calcula o IC médio para cada tamanho de chave candidato (para o gráfico).
-export function icByKeyLength(ciphertext, maxKeyLen = 10) {
-  const text = onlyAlpha(ciphertext);
-  const result = [];
-  for (let keyLen = 1; keyLen <= maxKeyLen; keyLen++) {
-    const groups = [];
-    for (let i = 0; i < keyLen; i++) {
+export function icPorTamanhoChave(textoCifrado, tamMaxChave = 10) {
+  const texto = apenasLetras(textoCifrado);
+  const resultado = [];
+  for (let tamChave = 1; tamChave <= tamMaxChave; tamChave++) {
+    const grupos = [];
+    for (let i = 0; i < tamChave; i++) {
       let g = "";
-      for (let j = i; j < text.length; j += keyLen) g += text[j];
-      groups.push(g);
+      for (let j = i; j < texto.length; j += tamChave) g += texto[j];
+      grupos.push(g);
     }
-    const avgIc = groups.reduce((s, g) => s + indexOfCoincidence(g), 0) / keyLen;
-    result.push({ keyLen, avgIc });
+    const icMedio = grupos.reduce((s, g) => s + indiceDeCoincidencia(g), 0) / tamChave;
+    resultado.push({ tamChave, icMedio });
   }
-  return result;
+  return resultado;
 }
 
-export function kasiskiKeyLength(ciphertext, maxKeyLen = 10) {
-  const ics = icByKeyLength(ciphertext, maxKeyLen);
-  for (const { keyLen, avgIc } of ics) {
-    if (avgIc >= THRESHOLD) return keyLen; // menor tamanho que já parece idioma natural
+export function tamanhoChaveKasiski(textoCifrado, tamMaxChave = 10) {
+  const ics = icPorTamanhoChave(textoCifrado, tamMaxChave);
+  for (const { tamChave, icMedio } of ics) {
+    if (icMedio >= LIMIAR) return tamChave; // menor tamanho que já parece idioma natural
   }
   // nenhum cruzou o limiar: devolve o de maior IC
-  return ics.reduce((best, cur) => (cur.avgIc > best.avgIc ? cur : best)).keyLen;
+  return ics.reduce((melhor, atual) => (atual.icMedio > melhor.icMedio ? atual : melhor)).tamChave;
 }
 
 // Quebra uma cifra de César (um grupo da Vigenère) por qui-quadrado.
 // Retorna o detalhe de todos os 26 deslocamentos para visualização.
-export function frequencyAttackSingle(group) {
-  const letters = onlyAlpha(group);
-  const n = letters.length;
-  const chiByShift = [];
+export function ataqueFrequenciaGrupo(grupo) {
+  const letras = apenasLetras(grupo);
+  const n = letras.length;
+  const quiPorDeslocamento = [];
   if (n === 0) {
-    for (let s = 0; s < 26; s++) chiByShift.push({ shift: s, chi: 0 });
-    return { keyChar: "A", bestShift: 0, chiByShift };
+    for (let s = 0; s < 26; s++) quiPorDeslocamento.push({ deslocamento: s, qui: 0 });
+    return { letraChave: "A", melhorDeslocamento: 0, quiPorDeslocamento };
   }
 
-  let bestShift = 0;
-  let bestChi = Infinity;
-  for (let shift = 0; shift < 26; shift++) {
-    const counts = {};
-    for (const c of letters) {
-      const d = String.fromCharCode(((c.charCodeAt(0) - A - shift + 26) % 26) + A);
-      counts[d] = (counts[d] || 0) + 1;
+  let melhorDeslocamento = 0;
+  let melhorQui = Infinity;
+  for (let deslocamento = 0; deslocamento < 26; deslocamento++) {
+    const contagens = {};
+    for (const c of letras) {
+      const d = String.fromCharCode(((c.charCodeAt(0) - A - deslocamento + 26) % 26) + A);
+      contagens[d] = (contagens[d] || 0) + 1;
     }
-    let chi = 0;
-    for (const letter of ALPHABET) {
-      const expected = (PT_FREQ[letter] / 100) * n;
-      const observed = counts[letter] || 0;
-      chi += ((observed - expected) ** 2) / expected;
+    let qui = 0;
+    for (const letra of ALFABETO) {
+      const esperado = (FREQ_PT[letra] / 100) * n;
+      const observado = contagens[letra] || 0;
+      qui += ((observado - esperado) ** 2) / esperado;
     }
-    chiByShift.push({ shift, chi });
-    if (chi < bestChi) {
-      bestChi = chi;
-      bestShift = shift;
+    quiPorDeslocamento.push({ deslocamento, qui });
+    if (qui < melhorQui) {
+      melhorQui = qui;
+      melhorDeslocamento = deslocamento;
     }
   }
-  return { keyChar: String.fromCharCode(bestShift + A), bestShift, chiByShift };
+  return { letraChave: String.fromCharCode(melhorDeslocamento + A), melhorDeslocamento, quiPorDeslocamento };
 }
 
 // Deriva a melhor chave para um tamanho FIXO, via análise de frequência por grupo.
-export function attackWithKeyLength(ciphertext, keyLen) {
-  const text = onlyAlpha(ciphertext);
-  const positions = [];
-  let key = "";
-  for (let i = 0; i < keyLen; i++) {
-    let group = "";
-    for (let j = i; j < text.length; j += keyLen) group += text[j];
-    const res = frequencyAttackSingle(group);
-    positions.push({ index: i, group, ...res });
-    key += res.keyChar;
+export function ataqueComTamanhoChave(textoCifrado, tamChave) {
+  const texto = apenasLetras(textoCifrado);
+  const posicoes = [];
+  let chave = "";
+  for (let i = 0; i < tamChave; i++) {
+    let grupo = "";
+    for (let j = i; j < texto.length; j += tamChave) grupo += texto[j];
+    const res = ataqueFrequenciaGrupo(grupo);
+    posicoes.push({ indice: i, grupo, ...res });
+    chave += res.letraChave;
   }
-  return { keyLen, positions, key, decrypted: vigenereDecrypt(ciphertext, key) };
+  return { tamChave, posicoes, chave, decifrado: decifrarVigenere(textoCifrado, chave) };
 }
 
 // Ataque completo: estima o tamanho da chave e quebra cada posição.
-export function crackVigenere(ciphertext, maxKeyLen = 10) {
-  const icSpectrum = icByKeyLength(ciphertext, maxKeyLen);
-  const keyLen = kasiskiKeyLength(ciphertext, maxKeyLen);
-  return { icSpectrum, ...attackWithKeyLength(ciphertext, keyLen) };
+export function quebrarVigenere(textoCifrado, tamMaxChave = 10) {
+  const espectroIc = icPorTamanhoChave(textoCifrado, tamMaxChave);
+  const tamChave = tamanhoChaveKasiski(textoCifrado, tamMaxChave);
+  return { espectroIc, ...ataqueComTamanhoChave(textoCifrado, tamChave) };
 }
 
-// Lista de candidatos (um por tamanho de chave 1..maxKeyLen), em ordem crescente.
-export function candidatesByLength(ciphertext, maxKeyLen = 10) {
-  const candidates = [];
-  for (let L = 1; L <= maxKeyLen; L++) {
-    candidates.push(attackWithKeyLength(ciphertext, L));
+// Lista de candidatos (um por tamanho de chave 1..tamMaxChave), em ordem crescente.
+export function candidatosPorTamanho(textoCifrado, tamMaxChave = 10) {
+  const candidatos = [];
+  for (let L = 1; L <= tamMaxChave; L++) {
+    candidatos.push(ataqueComTamanhoChave(textoCifrado, L));
   }
-  return candidates;
+  return candidatos;
 }
 
 /* ------------------------------------------------------------------ *
@@ -167,7 +167,7 @@ export function candidatesByLength(ciphertext, maxKeyLen = 10) {
 
 // Corpus de referência em português (sem acentos). Quanto mais texto natural,
 // melhor o modelo estatístico que distingue uma decifração correta de lixo.
-const PT_CORPUS = `
+const CORPUS_PT = `
 A criptografia e a ciencia de proteger a informacao transformando mensagens
 em codigos que apenas as partes autorizadas conseguem ler. Desde a antiguidade
 as pessoas usam cifras para esconder segredos militares politicos e comerciais.
@@ -188,80 +188,80 @@ quem deseja construir sistemas confiaveis e proteger os dados dos usuarios contr
 adversarios que tentam descobrir a chave secreta usada para cifrar o conteudo.
 `;
 
-let NGRAM = null;
-function buildNgram() {
-  const text = onlyAlpha(PT_CORPUS);
+let NGRAMA = null;
+function construirNgrama() {
+  const texto = apenasLetras(CORPUS_PT);
   const tri = {};
-  for (let i = 0; i + 3 <= text.length; i++) {
-    const t = text.slice(i, i + 3);
+  for (let i = 0; i + 3 <= texto.length; i++) {
+    const t = texto.slice(i, i + 3);
     tri[t] = (tri[t] || 0) + 1;
   }
-  const total = Math.max(1, text.length - 2);
-  NGRAM = { tri, total, floor: Math.log(0.01 / total) };
+  const total = Math.max(1, texto.length - 2);
+  NGRAMA = { tri, total, piso: Math.log(0.01 / total) };
 }
 
 // Pontua o quanto um texto "parece português" (soma de log-prob dos trigramas).
 // Maior = mais natural. Serve de função objetivo do refinamento.
-export function textFitness(text) {
-  if (!NGRAM) buildNgram();
-  const s = onlyAlpha(text);
-  let score = 0;
+export function aptidaoTexto(texto) {
+  if (!NGRAMA) construirNgrama();
+  const s = apenasLetras(texto);
+  let pontuacao = 0;
   for (let i = 0; i + 3 <= s.length; i++) {
-    const c = NGRAM.tri[s.slice(i, i + 3)];
-    score += c != null ? Math.log(c / NGRAM.total) : NGRAM.floor;
+    const c = NGRAMA.tri[s.slice(i, i + 3)];
+    pontuacao += c != null ? Math.log(c / NGRAMA.total) : NGRAMA.piso;
   }
-  return score;
+  return pontuacao;
 }
 
 // A partir de uma chave inicial, ajusta cada posição (A..Z) mantendo a troca
 // que mais aumenta a "naturalidade" do texto, repetindo até estabilizar.
-export function hillClimbKey(ciphertext, keyLen, startKey) {
-  const key = startKey.padEnd(keyLen, "A").slice(0, keyLen).split("");
-  let best = textFitness(vigenereDecrypt(ciphertext, key.join("")));
-  let improved = true;
-  while (improved) {
-    improved = false;
-    for (let i = 0; i < keyLen; i++) {
-      let bestChar = key[i];
-      let bestScore = best;
-      const original = key[i];
+export function subidaEncostaChave(textoCifrado, tamChave, chaveInicial) {
+  const chave = chaveInicial.padEnd(tamChave, "A").slice(0, tamChave).split("");
+  let melhor = aptidaoTexto(decifrarVigenere(textoCifrado, chave.join("")));
+  let melhorou = true;
+  while (melhorou) {
+    melhorou = false;
+    for (let i = 0; i < tamChave; i++) {
+      let melhorLetra = chave[i];
+      let melhorPontuacao = melhor;
+      const original = chave[i];
       for (let c = 0; c < 26; c++) {
-        key[i] = String.fromCharCode(65 + c);
-        const score = textFitness(vigenereDecrypt(ciphertext, key.join("")));
-        if (score > bestScore) {
-          bestScore = score;
-          bestChar = key[i];
+        chave[i] = String.fromCharCode(65 + c);
+        const pontuacao = aptidaoTexto(decifrarVigenere(textoCifrado, chave.join("")));
+        if (pontuacao > melhorPontuacao) {
+          melhorPontuacao = pontuacao;
+          melhorLetra = chave[i];
         }
       }
-      key[i] = bestChar;
-      if (bestChar !== original) {
-        best = bestScore;
-        improved = true;
+      chave[i] = melhorLetra;
+      if (melhorLetra !== original) {
+        melhor = melhorPontuacao;
+        melhorou = true;
       }
     }
   }
-  return key.join("");
+  return chave.join("");
 }
 
 // Ataque a um tamanho fixo, já com refinamento por hill-climbing.
-export function attackRefined(ciphertext, keyLen) {
-  const base = attackWithKeyLength(ciphertext, keyLen);
-  const key = hillClimbKey(ciphertext, keyLen, base.key);
-  const decrypted = vigenereDecrypt(ciphertext, key);
-  return { keyLen, baseKey: base.key, key, decrypted, fitness: textFitness(decrypted) };
+export function ataqueRefinado(textoCifrado, tamChave) {
+  const base = ataqueComTamanhoChave(textoCifrado, tamChave);
+  const chave = subidaEncostaChave(textoCifrado, tamChave, base.chave);
+  const decifrado = decifrarVigenere(textoCifrado, chave);
+  return { tamChave, chaveBase: base.chave, chave, decifrado, aptidao: aptidaoTexto(decifrado) };
 }
 
 // Penalidade por letra de chave: chaves longas têm mais graus de liberdade e
 // tendem a "overfitar" textos curtos. Penalizar o tamanho evita escolher uma
 // chave longa só porque ela ajusta melhor um texto pequeno.
-const LENGTH_PENALTY = 3.0;
-const rankScore = (c) => c.fitness - LENGTH_PENALTY * c.keyLen;
+const PENALIDADE_TAMANHO = 3.0;
+const pontuacaoRanking = (c) => c.aptidao - PENALIDADE_TAMANHO * c.tamChave;
 
 // Candidatos refinados (um por tamanho), ordenados do mais provável ao menos.
 // Usado pelo modo automático: tenta primeiro o que mais "parece português".
-export function candidatesRanked(ciphertext, maxKeyLen = 10) {
+export function candidatosOrdenados(textoCifrado, tamMaxChave = 10) {
   const cands = [];
-  for (let L = 1; L <= maxKeyLen; L++) cands.push(attackRefined(ciphertext, L));
-  cands.sort((a, b) => rankScore(b) - rankScore(a));
+  for (let L = 1; L <= tamMaxChave; L++) cands.push(ataqueRefinado(textoCifrado, L));
+  cands.sort((a, b) => pontuacaoRanking(b) - pontuacaoRanking(a));
   return cands;
 }

@@ -1,36 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import { broker } from "../lib/broker.js";
 
-// Faz polling do estado do canal a cada `intervalMs`.
-// Retorna { state, online, error } — online indica se o broker respondeu.
-export function useBrokerState(intervalMs = 1000) {
-  const [state, setState] = useState({ channel: null, reply: null, log: [] });
+// Faz polling do estado do canal a cada `intervaloMs`.
+// Retorna { estado, online, erro } — online indica se o broker respondeu.
+export function useEstadoBroker(intervaloMs = 1000) {
+  const [estado, setEstado] = useState({ channel: null, reply: null, log: [] });
   const [online, setOnline] = useState(false);
-  const [error, setError] = useState(null);
-  const timer = useRef(null);
+  const [erro, setErro] = useState(null);
+  const temporizador = useRef(null);
 
   useEffect(() => {
-    let alive = true;
-    async function tick() {
+    let ativo = true;
+    async function atualizar() {
       try {
-        const s = await broker.getState();
-        if (!alive) return;
-        setState(s);
+        const s = await broker.obterEstado();
+        if (!ativo) return;
+        setEstado(s);
         setOnline(true);
-        setError(null);
+        setErro(null);
       } catch (e) {
-        if (!alive) return;
+        if (!ativo) return;
         setOnline(false);
-        setError(e.message);
+        setErro(e.message);
       }
     }
-    tick();
-    timer.current = setInterval(tick, intervalMs);
+    atualizar();
+    temporizador.current = setInterval(atualizar, intervaloMs);
     return () => {
-      alive = false;
-      clearInterval(timer.current);
+      ativo = false;
+      clearInterval(temporizador.current);
     };
-  }, [intervalMs]);
+  }, [intervaloMs]);
 
-  return { state, online, error };
+  return { estado, online, erro };
 }
